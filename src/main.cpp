@@ -139,7 +139,7 @@ int main()
 
     // create vertex buffer object (used to store vertices on GPU), vertex array object, and elemental buffer object (create rectangle from two triangles)
     // VAO is required for Core OpenGL
-    unsigned int VBO, VAO, EBO;
+    unsigned int VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
@@ -163,6 +163,9 @@ int main()
 
     // initialize canvas
     // initializeCanvas();
+
+    // uncomment to activate wireframe mode
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	// render loop
 	while (!glfwWindowShouldClose(window))
