@@ -51,8 +51,6 @@ int main()
 
     // glEnable(GL_DEBUG_OUTPUT);
 
-    // WIP initializeCanvas()...
-
     std::cout << "Loading shaders..."  << std::endl;
     Shader canvasShader("src/shader.vs", "src/shader.fs");
 
@@ -64,21 +62,10 @@ int main()
         -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
     };
 
-    // float vertices[] = {
-    //     // positions          // colors           // texture coords
-    //     0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-    //     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-    //     -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-    //     -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
-    // };
     unsigned int indices[] = {  
         0, 1, 3, // first triangle
         1, 2, 3  // second triangle
     };
-    // unsigned int indices[] = {
-    //     1, 2, 0, // first triangle
-    //     2, 3, 0  // second triangle
-    // };
 
     // create vertex buffer object (used to store vertices on GPU), vertex array object, and elemental buffer object (create rectangle from two triangles)
     // VAO is required for Core OpenGL
@@ -152,13 +139,13 @@ int main()
 		processInput(window);
 
         // update texture
-        canvasUpdate = updateCanvas(canvasData, step);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_FLOAT, canvasUpdate);
-        step++;
+        // canvasUpdate = updateCanvas(canvasData, step);
+        // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_FLOAT, canvasUpdate);
+        // step++;
 
 		// render
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		// glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		// glClear(GL_COLOR_BUFFER_BIT);
 
         // bind texture
         glActiveTexture(GL_TEXTURE0);
@@ -190,10 +177,32 @@ float * generateCanvas() {
     int i = 0;
     for(int row = 0; row < 512; row++) {
         for(int col = 0; col < 512; col++) {
-            canvasData[i] = (float)((value%255)/255.0);
-            canvasData[i + 1] = (float)((value%255)/255.0);
-            canvasData[i + 2] = (float)((value%255)/255.0);
-            canvasData[i + 3] = (float)((value%255)/255.0);
+            // pattern
+            // canvasData[i] = (float)((value%255)/255.0);
+            // canvasData[i + 1] = (float)((value%255)/255.0);
+            // canvasData[i + 2] = (float)((value%255)/255.0);
+            // canvasData[i + 3] = (float)((value%255)/255.0);
+
+            // middle sand
+            if (col == 180 && row >= 500) {
+                canvasData[i] = (float)((244)/255.0);
+                canvasData[i + 1] = (float)((228)/255.0);
+                canvasData[i + 2] = (float)((101)/255.0);
+                canvasData[i + 3] = (float)(1);
+            } else {
+                canvasData[i] = (float)((0)/255.0);
+                canvasData[i + 1] = (float)((0)/255.0);
+                canvasData[i + 2] = (float)((0)/255.0);
+                canvasData[i + 3] = (float)((1)/255.0);
+            }
+
+            if (row <= 20) {
+                canvasData[i] = (float)((117)/255.0);
+                canvasData[i + 1] = (float)((116)/255.0);
+                canvasData[i + 2] = (float)((103)/255.0);
+                canvasData[i + 3] = (float)((1)/255.0);
+            }
+
             i += 4;
             value++;
         }
@@ -204,21 +213,71 @@ float * generateCanvas() {
 }
 
 float * updateCanvas(float *currentCanvas, int update) {
-    std::cout << "Generating canvas..."  << std::endl;
     float *canvasData;
     canvasData = new float[(512 * 512) * 4];
-    int value = 0;
     int i = 0;
     for(int row = 0; row < 512; row++) {
         for(int col = 0; col < 512; col++) {
-            canvasData[i] = (float)(((value + update)%255)/255.0);
-            canvasData[i + 1] = (float)(((value + update)%255)/255.0);
-            canvasData[i + 2] = (float)(((value + update)%255)/255.0);
-            canvasData[i + 3] = (float)(((value + update)%255)/255.0);
+
+            float currentRed = (float)currentCanvas[i];
+            float currentGreen = (float)currentCanvas[i + 1];
+            float currentBlue = (float)currentCanvas[i + 2];
+            float currentAlpha = (float)currentCanvas[i + 3];
+
+            // test for sand
+            if (currentRed == (float)((244)/255.0) && 
+                currentGreen == (float)((228)/255.0) && 
+                currentBlue == (float)((101)/255.0) &&
+                currentAlpha == (float)((1)/255.0)) 
+            {
+                // check what's below
+                float downRed = (float)currentCanvas[(i * 4 * 512)];
+                float downBlue = (float)currentCanvas[(i * 4 * 512) + 1];
+                float downGreen = (float)currentCanvas[(i * 4 * 512) + 2];
+                float downAlpha = (float)currentCanvas[(i * 4 * 512) + 3];
+
+                // draw sand if below is empty
+                if (downRed == (float)((0)/255.0) &&
+                    downRed == (float)((0)/255.0) &&
+                    downRed == (float)((0)/255.0) &&
+                    downRed == (float)((0)/255.0))
+                {
+                    canvasData[i] = (float)((244)/255.0);
+                    canvasData[i + 1] = (float)((228)/255.0);
+                    canvasData[i + 2] = (float)((101)/255.0);
+                    canvasData[i + 3] = (float)(1);
+                }
+            }
+
+            // test for wall
+            if (currentRed == (float)((117)/255.0) &&
+                currentGreen == (float)((116)/255.0) &&
+                currentBlue == (float)((103)/255.0) &&
+                currentAlpha == (float)((1)/255.0)) 
+            {
+                // wall stays as wall (indestructible)
+                canvasData[i] = (float)((117)/255.0);
+                canvasData[i + 1] = (float)((116)/255.0);
+                canvasData[i + 2] = (float)((103)/255.0);
+                canvasData[i + 3] = (float)((1)/255.0);
+            }
+
+            // middle sand generator
+            if (col == 180 && row >= 500) {
+                canvasData[i] = (float)((244)/255.0);
+                canvasData[i + 1] = (float)((228)/255.0);
+                canvasData[i + 2] = (float)((101)/255.0);
+                canvasData[i + 3] = (float)(1);
+            } else {
+                canvasData[i] = (float)((0)/255.0);
+                canvasData[i + 1] = (float)((0)/255.0);
+                canvasData[i + 2] = (float)((0)/255.0);
+                canvasData[i + 3] = (float)((1)/255.0);
+            }
+
             i += 4;
         }
     }
-    std::cout << "Finished generating canvas..."  << std::endl;
 
     return canvasData;
 }
