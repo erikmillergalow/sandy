@@ -7,6 +7,8 @@
 #include <iostream>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
+float * generateCanvas();
+float * updateCanvas(float *currentCanvas, int update);
 void processInput(GLFWwindow *window);
 
 void initializeCanvas();
@@ -14,22 +16,6 @@ void initializeCanvas();
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
-
-// initial canvas shader definition
-// const char *vertexShaderSource = "#version 330 core\n"
-//     "layout (location = 0) in vec3 aPos;\n"
-//     "void main()\n"
-//     "{\n"
-//     "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-//     "}\0";
-
-// // initial fragment shader source
-// const char *fragmentShaderSource = "#version 330 core\n"
-//     "out vec4 FragColor;\n"
-//     "void main()\n"
-//     "{\n"
-//     "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-//     "}\n\0";
 
 int main()
 {
@@ -70,21 +56,21 @@ int main()
     std::cout << "Loading shaders..."  << std::endl;
     Shader canvasShader("src/shader.vs", "src/shader.fs");
 
-    // float vertices[] = {
-    //     // positions          // colors           // texture coords
-    //     1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-    //     1.0f, -1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-    //     -1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-    //     -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
-    // };
-
     float vertices[] = {
         // positions          // colors           // texture coords
-        0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-        0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
+        1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+        1.0f, -1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+        -1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+        -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
     };
+
+    // float vertices[] = {
+    //     // positions          // colors           // texture coords
+    //     0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+    //     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+    //     -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+    //     -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
+    // };
     unsigned int indices[] = {  
         0, 1, 3, // first triangle
         1, 2, 3  // second triangle
@@ -131,8 +117,10 @@ int main()
     // unbind buffer now that glVertexAttribPointer registered VBO as the vertex attribute's bound VBO
     // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    float *canvasData = generateCanvas();
+
+    std::cout << "Creating texture..."  << std::endl;
     unsigned int texture1;
-    // glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glGenTextures(1, &texture1);
     // glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture1);
@@ -141,68 +129,32 @@ int main()
     // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    std::cout << "Generating canvas..."  << std::endl;
-    std::cout << "Height: "  << SCR_HEIGHT << std::endl;
-    std::cout << "Width: "  << SCR_WIDTH << std::endl;
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_FLOAT, canvasData);
+    glGenerateMipmap(GL_TEXTURE_2D);
 
-    // create initial canvas array
-    // unsigned char canvasData[SCR_HEIGHT/2][SCR_WIDTH/2][3];
-    // GLubyte canvasData[SCR_HEIGHT][SCR_WIDTH][4];
-    // GLubyte canvasData[64][64][3];
-    // int value = 0;
-    // for(int row = 0; row < 64; row++) {
-    //     for(int col = 0; col < 64; col++) {
-    //         // std::cout << "Row: " << row << std::endl;
-    //         // std::cout << "Col: " << col << std::endl;
-    //         value = (((row & 0x8) == 0) ^ ((col & 0x8) == 0)) * 255;
-    //         // std::cout << "Value: " << value << std::endl;
-    //         canvasData[row][col][0] = (GLubyte)value;
-    //         canvasData[row][col][1] = (GLubyte)value;
-    //         canvasData[row][col][2] = (GLubyte)value;
-    //         // canvasData[row][col][3] = (GLubyte)255;
-
-    //         // canvasData[row][col][0] = (GLubyte)(value%255);
-    //         // canvasData[row][col][1] = (GLubyte)((value*row)%255);
-    //         // canvasData[row][col][2] = (GLubyte)((value*col)%255);
-    //         // value++;
-    //         // canvasData[row][col][0] = (unsigned char)100;
-    //         // canvasData[row][col][1] = (unsigned char)100;
-    //         // canvasData[row][col][2] = (unsigned char)100;
-    //     }
-    // }
-    // load image, create texture and generate mipmaps
-    int width, height, nrChannels;
-    stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
-    // The FileSystem::getPath(...) is part of the GitHub repository so we can find files on any IDE/platform; replace it with your own image path.
-    unsigned char *data = stbi_load("src/container.jpg", &width, &height, &nrChannels, 0);
-    if (data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    std::cout << "Finished generating canvas..."  << std::endl;
-    std::cout << glGetError() << std::endl;
-    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 64, 64, 0, GL_RGB, GL_UNSIGNED_INT, canvasData);
     std::cout << "Texture initialized..."  << std::endl;
 
     canvasShader.use();
     glUniform1i(glGetUniformLocation(canvasShader.ID, "texture1"), 0);
 
-    // initialize canvas
-    // initializeCanvas();
 
     // uncomment to activate wireframe mode
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    float *canvasUpdate;
+    canvasUpdate = new float[(512 * 512) * 4];
+    int step = 0;
 
 	// render loop
 	while (!glfwWindowShouldClose(window))
 	{
 		// input
 		processInput(window);
+
+        // update texture
+        canvasUpdate = updateCanvas(canvasData, step);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_FLOAT, canvasUpdate);
+        step++;
 
 		// render
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -228,6 +180,47 @@ int main()
 	//---------------------------------------------------------------
 	glfwTerminate();
 	return 0;
+}
+
+float * generateCanvas() {
+    std::cout << "Generating canvas..."  << std::endl;
+    float *canvasData;
+    canvasData = new float[(512 * 512) * 4];
+    int value = 0;
+    int i = 0;
+    for(int row = 0; row < 512; row++) {
+        for(int col = 0; col < 512; col++) {
+            canvasData[i] = (float)((value%255)/255.0);
+            canvasData[i + 1] = (float)((value%255)/255.0);
+            canvasData[i + 2] = (float)((value%255)/255.0);
+            canvasData[i + 3] = (float)((value%255)/255.0);
+            i += 4;
+            value++;
+        }
+    }
+    std::cout << "Finished generating canvas..."  << std::endl;
+
+    return canvasData;
+}
+
+float * updateCanvas(float *currentCanvas, int update) {
+    std::cout << "Generating canvas..."  << std::endl;
+    float *canvasData;
+    canvasData = new float[(512 * 512) * 4];
+    int value = 0;
+    int i = 0;
+    for(int row = 0; row < 512; row++) {
+        for(int col = 0; col < 512; col++) {
+            canvasData[i] = (float)(((value + update)%255)/255.0);
+            canvasData[i + 1] = (float)(((value + update)%255)/255.0);
+            canvasData[i + 2] = (float)(((value + update)%255)/255.0);
+            canvasData[i + 3] = (float)(((value + update)%255)/255.0);
+            i += 4;
+        }
+    }
+    std::cout << "Finished generating canvas..."  << std::endl;
+
+    return canvasData;
 }
 
 void processInput(GLFWwindow *window)
