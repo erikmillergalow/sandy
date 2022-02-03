@@ -16,8 +16,8 @@ void processInput(GLFWwindow *window);
 void initializeCanvas();
 
 // settings
-const unsigned int SCR_WIDTH = 1200;
-const unsigned int SCR_HEIGHT = 800;
+const unsigned int SCR_WIDTH = 600;
+const unsigned int SCR_HEIGHT = 512;
 
 int main()
 {
@@ -118,7 +118,7 @@ int main()
     // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_FLOAT, canvasData);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_HEIGHT, SCR_WIDTH, 0, GL_RGBA, GL_FLOAT, canvasData);
     glGenerateMipmap(GL_TEXTURE_2D);
 
     std::cout << "Texture initialized..."  << std::endl;
@@ -131,7 +131,7 @@ int main()
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     float *canvasUpdate;
-    canvasUpdate = new float[(512 * 512) * 4];
+    canvasUpdate = new float[(SCR_WIDTH * SCR_HEIGHT) * 4];
     int step = 0;
 
 	// render loop
@@ -142,7 +142,7 @@ int main()
 
         // update texture
         canvasUpdate = updateCanvas(canvasData, step);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_FLOAT, canvasUpdate);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_HEIGHT, SCR_WIDTH, 0, GL_RGBA, GL_FLOAT, canvasUpdate);
         // std::cout << "data:" << canvasData  << std::endl;
         // std::cout << "update:" << canvasUpdate  << std::endl;
 
@@ -175,14 +175,14 @@ int main()
 	return 0;
 }
 
-float * generateCanvas() {
+float *generateCanvas() {
     std::cout << "Generating canvas..."  << std::endl;
     float *canvasData;
-    canvasData = new float[(512 * 512) * 4];
+    canvasData = new float[(SCR_WIDTH * SCR_HEIGHT) * 4];
     int value = 0;
     int i = 0;
-    for(int row = 0; row < 512; row++) {
-        for(int col = 0; col < 512; col++) {
+    for(int row = 0; row < SCR_HEIGHT; row++) {
+        for(int col = 0; col < SCR_WIDTH; col++) {
             // pattern
             // canvasData[i] = (float)((value%255)/255.0);
             // canvasData[i + 1] = (float)((value%255)/255.0);
@@ -190,7 +190,7 @@ float * generateCanvas() {
             // canvasData[i + 3] = (float)((value%255)/255.0);
 
             // middle sand
-            if (col == 180 && row >= 500) {
+            if (col == 180 && row >= SCR_HEIGHT - 2) {
                 canvasData[i] = (float)((244)/255.0);
                 canvasData[i + 1] = (float)((228)/255.0);
                 canvasData[i + 2] = (float)((101)/255.0);
@@ -235,10 +235,10 @@ enum particleTypes{
 
 float *updateCanvas(float *currentCanvas, int update) {
     float *canvasData;
-    canvasData = new float[(512 * 512) * 4];
+    canvasData = new float[(SCR_WIDTH * SCR_HEIGHT) * 4];
     int i = 0;
-    for (int row = 0; row < 512; row++) {
-        for (int col = 0; col < 512; col++) {
+    for (int row = 0; row < SCR_HEIGHT; row++) {
+        for (int col = 0; col < SCR_WIDTH; col++) {
 
             // access current pixel
             float currentRed = *(currentCanvas + (i));
@@ -311,7 +311,7 @@ float *updateCanvas(float *currentCanvas, int update) {
                 }
 
                 // middle sand generator
-                if (col == 180 && row >= 510) {
+                if (col == 180 && row >= SCR_HEIGHT - 1) {
                     drawParticle(&canvasData[i], SAND);
                 }
             }
@@ -319,6 +319,8 @@ float *updateCanvas(float *currentCanvas, int update) {
             i += 4;
         }
     }
+
+    delete(currentCanvas);
 
     return canvasData;
 }
