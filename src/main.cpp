@@ -9,6 +9,7 @@
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 float * generateCanvas();
 float * updateCanvas(float *currentCanvas, int update);
+void drawParticle(float *canvasLocation, int particleType);
 void processInput(GLFWwindow *window);
 
 void initializeCanvas();
@@ -217,7 +218,21 @@ float * generateCanvas() {
     return canvasData;
 }
 
-float * updateCanvas(float *currentCanvas, int update) {
+enum particleTypes{
+    EMPTY,
+    WALL,
+    SAND,
+    WATER
+};
+
+// struct SAND {
+//     float r = (float)((244)/(255.0));
+//     float g = (float)((228)/(255.0));
+//     float b = (float)((101)/(255.0));
+//     float a = (float)(1);
+// }
+
+float *updateCanvas(float *currentCanvas, int update) {
     float *canvasData;
     canvasData = new float[(512 * 512) * 4];
     int i = 0;
@@ -236,10 +251,7 @@ float * updateCanvas(float *currentCanvas, int update) {
                 currentAlpha == (float)(1))
             {
                 // wall stays as wall (indestructible)
-                canvasData[i] = (float)((117)/255.0);
-                canvasData[i + 1] = (float)((116)/255.0);
-                canvasData[i + 2] = (float)((103)/255.0);
-                canvasData[i + 3] = (float)(1);
+                drawParticle(&canvasData[i], WALL);
             } else {
 
                 // test for sand
@@ -249,10 +261,10 @@ float * updateCanvas(float *currentCanvas, int update) {
                     currentAlpha == (float)(1)) 
                 {
                     // check what's below
-                    float downRed = *(currentCanvas + (i) - (4 * 512));
-                    float downGreen = *(currentCanvas + (i) - (4 * 512) + 1);
-                    float downBlue = *(currentCanvas + (i) - (4 * 512) + 2);
-                    float downAlpha = *(currentCanvas + (i) - (4 * 512) + 3);
+                    float downRed = *(canvasData + (i) - (4 * 512));
+                    float downGreen = *(canvasData + (i) - (4 * 512) + 1);
+                    float downBlue = *(canvasData + (i) - (4 * 512) + 2);
+                    float downAlpha = *(canvasData + (i) - (4 * 512) + 3);
 
                     // move sand down one pixel if empty space underneath
                     if (downRed == (float)((0)/255.0) &&
@@ -273,30 +285,32 @@ float * updateCanvas(float *currentCanvas, int update) {
                         canvasData[(i - (4 * 512)) + 2] = (float)((101)/255.0);
                         canvasData[(i - (4 * 512))+ 3] = (float)(1);
 
-                    // chack for sand below
+                    // check for sand below
                     } else if (downRed == (float)((244)/255.0) &&
                         downGreen == (float)((228)/255.0) &&
                         downBlue == (float)((101)/255.0) &&
                         downAlpha == (float)(1))
                     {
                         // check for space to the left
-                        float downLeftRed = *(currentCanvas + (i - (4 * 512) - 4));
-                        float downLeftGreen = *(currentCanvas + (i - (4 * 512) - 3));
-                        float downLeftBlue = *(currentCanvas + (i - (4 * 512) - 2));
-                        float downLeftAlpha = *(currentCanvas + (i - (4 * 512) - 1));
+                        float downLeftRed = *(canvasData + (i - (4 * 512) - 4));
+                        float downLeftGreen = *(canvasData + (i - (4 * 512) - 3));
+                        float downLeftBlue = *(canvasData + (i - (4 * 512) - 2));
+                        float downLeftAlpha = *(canvasData + (i - (4 * 512) - 1));
                         
                         // check for space to the right
-                        float downRightRed = *(currentCanvas + (i - (4 * 512) + 4));
-                        float downRightGreen = *(currentCanvas + (i - (4 * 512) + 5));
-                        float downRightBlue = *(currentCanvas + (i - (4 * 512) + 5));
-                        float downRightAlpha = *(currentCanvas + (i - (4 * 512) + 7));
+                        float downRightRed = *(canvasData + (i - (4 * 512) + 4));
+                        float downRightGreen = *(canvasData + (i - (4 * 512) + 5));
+                        float downRightBlue = *(canvasData + (i - (4 * 512) + 5));
+                        float downRightAlpha = *(canvasData + (i - (4 * 512) + 7));
                         if (downLeftRed == (float)(0) &&
                             downLeftGreen == (float)(0) &&
                             downLeftBlue == (float)(0) &&
                             downLeftAlpha == (float)(1))
                         {
+                            // draw empty
+                            drawParticle(&canvasData[i], EMPTY);
+
                             // fall left
-                            // std::cout << "Falling left..."  << std::endl;
                             canvasData[(i - (4 * 512)) - 4] = (float)((244)/255.0);
                             canvasData[(i - (4 * 512)) - 3] = (float)((228)/255.0);
                             canvasData[(i - (4 * 512)) - 2] = (float)((101)/255.0);
@@ -306,19 +320,17 @@ float * updateCanvas(float *currentCanvas, int update) {
                             downRightBlue == (float)(0) &&
                             downRightAlpha == (float)(1))
                         {
+                            // draw empty
+                            drawParticle(&canvasData[i], EMPTY);
+
                             // fall right
-                            // std::cout << "Falling right..."  << std::endl;
                             canvasData[(i - (4 * 512)) + 4] = (float)((244)/255.0);
                             canvasData[(i - (4 * 512)) + 5] = (float)((228)/255.0);
                             canvasData[(i - (4 * 512)) + 6] = (float)((101)/255.0);
                             canvasData[(i - (4 * 512)) + 7] = (float)(1);
                         } else {
                             // draw sand in same spot
-                            // std::cout << "Not moving..."  << std::endl;
-                            canvasData[i] = (float)((244)/255.0);
-                            canvasData[i + 1] = (float)((228)/255.0);
-                            canvasData[i + 2] = (float)((101)/255.0);
-                            canvasData[i + 3] = (float)(1);
+                            drawParticle(&canvasData[i], SAND);
                         }
                     }
 
@@ -328,43 +340,17 @@ float * updateCanvas(float *currentCanvas, int update) {
                         downBlue == (float)((103)/255.0) &&
                         downAlpha == (float)(1))
                     {
-                        // std::cout << "Wall below..."  << std::endl;
                         // draw sand
-                        canvasData[i] = (float)((244)/255.0);
-                        canvasData[i + 1] = (float)((228)/255.0);
-                        canvasData[i + 2] = (float)((101)/255.0);
-                        canvasData[i + 3] = (float)(1);
+                        drawParticle(&canvasData[i], SAND);
                     }
-                // } else if (currentRed == (float)(0) &&
-                //     currentGreen == (float)(0) &&
-                //     currentBlue == (float)(0) &&
-                //     currentAlpha == (float)(1))
-                // {
                 } else {
                     // draw empty
-                    canvasData[i] = (float)((0)/255.0);
-                    canvasData[i + 1] = (float)((0)/255.0);
-                    canvasData[i + 2] = (float)((0)/255.0);
-                    canvasData[i + 3] = (float)(1);
+                    drawParticle(&canvasData[i], EMPTY);
                 }
 
                 // middle sand generator
-                if (col == 180 && row >= 500) {
-                    // if (currentRed != (float)((244)/255.0) && 
-                    //     currentGreen != (float)((228)/255.0) && 
-                    //     currentBlue != (float)((101)/255.0) &&
-                    //     currentAlpha != (float)(1)) 
-                    // {
-                    // if (currentRed == (float)(0) &&
-                    //     currentGreen == (float)(0) &&
-                    //     currentBlue == (float)(0) &&
-                    //     currentAlpha == (float)(1))
-                    // {
-                        canvasData[i] = (float)((244)/255.0);
-                        canvasData[i + 1] = (float)((228)/255.0);
-                        canvasData[i + 2] = (float)((101)/255.0);
-                        canvasData[i + 3] = (float)(1);
-                    // }
+                if (col == 180 && row >= 510) {
+                    drawParticle(&canvasData[i], SAND);
                 }
             }
 
@@ -375,6 +361,29 @@ float * updateCanvas(float *currentCanvas, int update) {
     // std::cout << "Frame complete..." << std::endl;
 
     return canvasData;
+}
+
+void drawParticle(float *canvasLocation, int particleType)
+{
+    if (particleType == EMPTY) {
+        *canvasLocation = (float)((0)/255.0);
+        *(canvasLocation + 1) = (float)((0)/255.0);
+        *(canvasLocation + 2) = (float)((0)/255.0);
+        *(canvasLocation + 3) = (float)(1);
+    } else if (particleType == WALL) {
+        *canvasLocation = ((117)/255.0);
+        *(canvasLocation + 1) = (float)((116)/255.0);
+        *(canvasLocation + 2) = (float)((103)/255.0);
+        *(canvasLocation + 3) = (float)(1);
+    } else if (particleType == SAND) {
+        *canvasLocation = (float)((244)/(255.0));
+        *(canvasLocation + 1) = (float)((228)/(255.0));
+        *(canvasLocation + 2) = (float)((101)/(255.0));
+        *(canvasLocation + 3) = (float)(1);
+    } else if (particleType == WATER) {
+
+    }
+
 }
 
 void processInput(GLFWwindow *window)
