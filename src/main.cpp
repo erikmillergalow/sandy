@@ -134,7 +134,7 @@ int main()
     // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_HEIGHT, SCR_WIDTH, 0, GL_RGBA, GL_FLOAT, canvasData);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, canvasData);
     glGenerateMipmap(GL_TEXTURE_2D);
 
     std::cout << "Texture initialized..."  << std::endl;
@@ -172,7 +172,7 @@ int main()
 
         // update texture
         // canvasUpdate = updateCanvas(drawUpdate, step);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_HEIGHT, SCR_WIDTH, 0, GL_RGBA, GL_FLOAT, canvasUpdate);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, canvasUpdate);
         // std::cout << "data:" << canvasData  << std::endl;
         // std::cout << "update:" << canvasUpdate  << std::endl;
 
@@ -246,21 +246,12 @@ float *draw(float *currentCanvas, double xpos, double ypos, int particleType) {
     // access current pixel
     double translatedYPos = std::abs(SCR_HEIGHT - ypos);
     int index = (int)((xpos * 4) + (translatedYPos *  4 * SCR_WIDTH));
-    // int index = (int)((xpos * 4) + (translatedYPos * SCR_HEIGHT));
 
-    std::cout << "X: " << xpos << std::endl;
-    std::cout << "Y: " << translatedYPos << std::endl;
-
-
-    // float currentRed = *(currentCanvas + (i));
-    // float currentGreen = *(currentCanvas + (i) + 1);
-    // float currentBlue = *(currentCanvas + (i) + 2);
-    // float currentAlpha = *(currentCanvas + (i) + 3);
-    // int currentType = getParticleType(currentRed, currentGreen, currentBlue, currentAlpha);
     for (int i = 0; i < 10; i++) {
-        drawParticle(&currentCanvas[index], particleType);
-        // drawParticle(&currentCanvas[index + (i * 4)], particleType);
-        // drawParticle(&currentCanvas[index + (i * 4) + (SCR_HEIGHT * i)], particleType);
+        drawParticle(&currentCanvas[index + (i * 4)], particleType);
+        for (int j = 0; j < 10; j++) {
+            drawParticle(&currentCanvas[index + (i * 4) - (SCR_WIDTH * 4 * j)], particleType);
+        }
     }
 
     return currentCanvas;
@@ -314,52 +305,52 @@ float *updateCanvas(float *currentCanvas, int step) {
 
 void processSand(int i, float *currentCanvas, float* canvasData, int step) {
     // check what's below
-    float downRed = *(canvasData + (i) - (4 * SCR_HEIGHT));
-    float downGreen = *(canvasData + (i) - (4 * SCR_HEIGHT) + 1);
-    float downBlue = *(canvasData + (i) - (4 * SCR_HEIGHT) + 2);
-    float downAlpha = *(canvasData + (i) - (4 * SCR_HEIGHT) + 3);
+    float downRed = *(canvasData + (i) - (4 * SCR_WIDTH));
+    float downGreen = *(canvasData + (i) - (4 * SCR_WIDTH) + 1);
+    float downBlue = *(canvasData + (i) - (4 * SCR_WIDTH) + 2);
+    float downAlpha = *(canvasData + (i) - (4 * SCR_WIDTH) + 3);
     int downType = getParticleType(downRed, downGreen, downBlue, downAlpha);
 
     // move sand down one pixel if empty space underneath
     if (downType == EMPTY) {
         // fall down
         drawParticle(&canvasData[i], EMPTY);
-        drawParticle(&canvasData[(i - (4 * SCR_HEIGHT))], SAND);
+        drawParticle(&canvasData[(i - (4 * SCR_WIDTH))], SAND);
 
     // check for sand below
     } else if (downType == SAND) {
         // check for space to the left
-        float downLeftRed = *(canvasData + (i - (4 * SCR_HEIGHT) - 4));
-        float downLeftGreen = *(canvasData + (i - (4 * SCR_HEIGHT) - 3));
-        float downLeftBlue = *(canvasData + (i - (4 * SCR_HEIGHT) - 2));
-        float downLeftAlpha = *(canvasData + (i - (4 * SCR_HEIGHT) - 1));
+        float downLeftRed = *(canvasData + (i - (4 * SCR_WIDTH) - 4));
+        float downLeftGreen = *(canvasData + (i - (4 * SCR_WIDTH) - 3));
+        float downLeftBlue = *(canvasData + (i - (4 * SCR_WIDTH) - 2));
+        float downLeftAlpha = *(canvasData + (i - (4 * SCR_WIDTH) - 1));
         int downLeftType = getParticleType(downLeftRed, downLeftGreen, downLeftBlue, downLeftAlpha);
         
         // check for space to the right
-        float downRightRed = *(canvasData + (i - (4 * SCR_HEIGHT) + 4));
-        float downRightGreen = *(canvasData + (i - (4 * SCR_HEIGHT) + 5));
-        float downRightBlue = *(canvasData + (i - (4 * SCR_HEIGHT) + 6));
-        float downRightAlpha = *(canvasData + (i - (4 * SCR_HEIGHT) + 7));
+        float downRightRed = *(canvasData + (i - (4 * SCR_WIDTH) + 4));
+        float downRightGreen = *(canvasData + (i - (4 * SCR_WIDTH) + 5));
+        float downRightBlue = *(canvasData + (i - (4 * SCR_WIDTH) + 6));
+        float downRightAlpha = *(canvasData + (i - (4 * SCR_WIDTH) + 7));
         int downRightType = getParticleType(downRightRed, downRightGreen, downRightBlue, downRightAlpha);
 
         if (downRightType == EMPTY) {
             // fall right
             drawParticle(&canvasData[i], EMPTY);
-            drawParticle(&canvasData[(i - (4 * SCR_HEIGHT)) + 4], SAND);
+            drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) + 4], SAND);
 
         } else if (downLeftType == EMPTY) {
             // fall left
             drawParticle(&canvasData[i], EMPTY);
-            drawParticle(&canvasData[(i - (4 * SCR_HEIGHT)) - 4], SAND);
+            drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) - 4], SAND);
         } else if (downLeftType == WATER) {
             // fall left
             drawParticle(&canvasData[i], WATER);
-            drawParticle(&canvasData[(i - (4 * SCR_HEIGHT)) - 4], SAND);
+            drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) - 4], SAND);
 
         } else if (downRightType == WATER) {
             // fall right
             drawParticle(&canvasData[i], WATER);
-            drawParticle(&canvasData[(i - (4 * SCR_HEIGHT)) + 4], SAND);
+            drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) + 4], SAND);
         } else {
             // draw sand in same spot (piling up)
             drawParticle(&canvasData[i], SAND);
@@ -367,7 +358,7 @@ void processSand(int i, float *currentCanvas, float* canvasData, int step) {
     } else if (downType == WATER) {
         // sink
         drawParticle(&canvasData[i], WATER);
-        drawParticle(&canvasData[(i - (4 * SCR_HEIGHT))], SAND);
+        drawParticle(&canvasData[(i - (4 * SCR_WIDTH))], SAND);
     } else if (downType == WALL) {
         // draw sand
         drawParticle(&canvasData[i], SAND);
@@ -376,17 +367,17 @@ void processSand(int i, float *currentCanvas, float* canvasData, int step) {
 
 void processWater(int i, float *currentCanvas, float* canvasData, int step) {
     // check what's below
-    float downRed = *(canvasData + (i) - (4 * SCR_HEIGHT));
-    float downGreen = *(canvasData + (i) - (4 * SCR_HEIGHT) + 1);
-    float downBlue = *(canvasData + (i) - (4 * SCR_HEIGHT) + 2);
-    float downAlpha = *(canvasData + (i) - (4 * SCR_HEIGHT) + 3);
+    float downRed = *(canvasData + (i) - (4 * SCR_WIDTH));
+    float downGreen = *(canvasData + (i) - (4 * SCR_WIDTH) + 1);
+    float downBlue = *(canvasData + (i) - (4 * SCR_WIDTH) + 2);
+    float downAlpha = *(canvasData + (i) - (4 * SCR_WIDTH) + 3);
     int downType = getParticleType(downRed, downGreen, downBlue, downAlpha);
 
     // move sand down one pixel if empty space underneath
     if (downType == EMPTY) {
         // fall down
         drawParticle(&canvasData[i], EMPTY);
-        drawParticle(&canvasData[(i - (4 * SCR_HEIGHT))], WATER);
+        drawParticle(&canvasData[(i - (4 * SCR_WIDTH))], WATER);
 
     } else if (downType == SAND || downType == WALL || downType == WATER) {
         // check for space to the left
@@ -404,29 +395,29 @@ void processWater(int i, float *currentCanvas, float* canvasData, int step) {
         int rightType = getParticleType(rightRed, rightGreen, rightBlue, rightAlpha);
 
         // check for space to the downward left
-        float downLeftRed = *(canvasData + (i - (4 * SCR_HEIGHT) - 4));
-        float downLeftGreen = *(canvasData + (i - (4 * SCR_HEIGHT) - 3));
-        float downLeftBlue = *(canvasData + (i - (4 * SCR_HEIGHT) - 2));
-        float downLeftAlpha = *(canvasData + (i - (4 * SCR_HEIGHT) - 1));
+        float downLeftRed = *(canvasData + (i - (4 * SCR_WIDTH) - 4));
+        float downLeftGreen = *(canvasData + (i - (4 * SCR_WIDTH) - 3));
+        float downLeftBlue = *(canvasData + (i - (4 * SCR_WIDTH) - 2));
+        float downLeftAlpha = *(canvasData + (i - (4 * SCR_WIDTH) - 1));
         int downLeftType = getParticleType(downLeftRed, downLeftGreen, downLeftBlue, downLeftAlpha);
         
         // check for space to the downward right
-        float downRightRed = *(canvasData + (i - (4 * SCR_HEIGHT) + 4));
-        float downRightGreen = *(canvasData + (i - (4 * SCR_HEIGHT) + 5));
-        float downRightBlue = *(canvasData + (i - (4 * SCR_HEIGHT) + 6));
-        float downRightAlpha = *(canvasData + (i - (4 * SCR_HEIGHT) + 7));
+        float downRightRed = *(canvasData + (i - (4 * SCR_WIDTH) + 4));
+        float downRightGreen = *(canvasData + (i - (4 * SCR_WIDTH) + 5));
+        float downRightBlue = *(canvasData + (i - (4 * SCR_WIDTH) + 6));
+        float downRightAlpha = *(canvasData + (i - (4 * SCR_WIDTH) + 7));
         int downRightType = getParticleType(downRightRed, downRightGreen, downRightBlue, downRightAlpha);
 
         if (downRightType == EMPTY) {
             // fall right
             // std::cout << "fall left" << std::endl;
             drawParticle(&canvasData[i], EMPTY);
-            drawParticle(&canvasData[(i - (4 * SCR_HEIGHT)) + 4], WATER);
+            drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) + 4], WATER);
         } else if (downLeftType == EMPTY) {
             // fall right
             // std::cout << "fall left" << std::endl;
             drawParticle(&canvasData[i], EMPTY);
-            drawParticle(&canvasData[(i - (4 * SCR_HEIGHT)) - 4], WATER);
+            drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) - 4], WATER);
         } else if (rightType == EMPTY) {
             // std::cout << "move right" << std::endl;
             drawParticle(&canvasData[i], EMPTY);
