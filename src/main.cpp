@@ -22,7 +22,7 @@ void processInput(GLFWwindow *window);
 void initializeCanvas();
 
 // settings
-const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_WIDTH = 837;
 const unsigned int SCR_HEIGHT = 600;
 
 // const unsigned int SCR_WIDTH = 100;
@@ -211,11 +211,11 @@ float *generateCanvas() {
     canvasData = new float[(SCR_WIDTH * SCR_HEIGHT) * 4];
     int value = 0;
     int i = 0;
-    for(int row = 0; row < SCR_WIDTH; row++) {
-        for(int col = 0; col < SCR_HEIGHT; col++) {
-
+    for(int col = 0; col < SCR_WIDTH; col++) {
+        for(int row = 0; row < SCR_HEIGHT; row++) {
+        
             // create wall on the bottom
-            if (row <= 20) {
+            if (col <= 20) {
                 canvasData[i] = (float)((117)/255.0);
                 canvasData[i + 1] = (float)((116)/255.0);
                 canvasData[i + 2] = (float)((103)/255.0);
@@ -242,63 +242,37 @@ float *draw(float *currentCanvas, double xpos, double ypos, int particleType) {
     float *canvasData;
     canvasData = new float[(SCR_WIDTH * SCR_HEIGHT) * 4];
     int i = 0;
+
+    // access current pixel
+    double translatedYPos = std::abs(SCR_HEIGHT - ypos);
+    int index = (int)((xpos * 4) + (translatedYPos *  4 * SCR_WIDTH));
+    // int index = (int)((xpos * 4) + (translatedYPos * SCR_HEIGHT));
+
     std::cout << "X: " << xpos << std::endl;
-    std::cout << "Y: " << ypos << std::endl;
-    
-    for (int row = 0; row < SCR_WIDTH; row++) {
-        for (int col = 0; col < SCR_HEIGHT; col++) {
-    //         // access current pixel
-            double translatedYPos = std::abs(SCR_WIDTH - ypos);
-            int index = (int)((xpos * 4) + (translatedYPos *  4 * SCR_HEIGHT));
+    std::cout << "Y: " << translatedYPos << std::endl;
 
-            float currentRed = *(currentCanvas + (i));
-            float currentGreen = *(currentCanvas + (i) + 1);
-            float currentBlue = *(currentCanvas + (i) + 2);
-            float currentAlpha = *(currentCanvas + (i) + 3);
-            int currentType = getParticleType(currentRed, currentGreen, currentBlue, currentAlpha);
 
-            // if (currentType == EMPTY) {
-            //     drawParticle(&currentCanvas[index], particleType);
-            //     drawParticle(&currentCanvas[index + 4], particleType);
-            //     drawParticle(&currentCanvas[index + 8], particleType);
-            //     drawParticle(&currentCanvas[index + 12], particleType);
-            //     drawParticle(&currentCanvas[index + 16], particleType);
-            //     drawParticle(&currentCanvas[index + (SCR_HEIGHT * 4) ], particleType);
-            //     drawParticle(&currentCanvas[index + ((SCR_HEIGHT * 4) + 4)], particleType);
-            //     drawParticle(&currentCanvas[index + ((SCR_HEIGHT * 4) + 8)], particleType);
-            //     drawParticle(&currentCanvas[index + ((SCR_HEIGHT * 4) + 12)], particleType);
-            //     drawParticle(&currentCanvas[index + ((SCR_HEIGHT * 4) + 16)], particleType);
-            // } else {
-            //     // copy last frame
-            //     drawParticle(&currentCanvas[index], currentType); 
-            // }
-            if ((std::abs(row - translatedYPos) < 5) && (std::abs(col - xpos) < 5)) {
-                // std::cout << "\nrow: " << row << std::endl;
-                // std::cout << "ypos: " << ypos << std::endl;
-                // std::cout << "translatedY: " << translatedYPos << std::endl;
-                // std::cout << "\nxpos: " << xpos << std::endl;
-                // std::cout << "col: " << col << std::endl;
-                drawParticle(&canvasData[i], particleType);
-            } else {
-                // copy last frame
-                drawParticle(&canvasData[i], currentType);
-            }
-
-            i += 4;
-        }
+    // float currentRed = *(currentCanvas + (i));
+    // float currentGreen = *(currentCanvas + (i) + 1);
+    // float currentBlue = *(currentCanvas + (i) + 2);
+    // float currentAlpha = *(currentCanvas + (i) + 3);
+    // int currentType = getParticleType(currentRed, currentGreen, currentBlue, currentAlpha);
+    for (int i = 0; i < 10; i++) {
+        drawParticle(&currentCanvas[index], particleType);
+        // drawParticle(&currentCanvas[index + (i * 4)], particleType);
+        // drawParticle(&currentCanvas[index + (i * 4) + (SCR_HEIGHT * i)], particleType);
     }
 
-    delete(currentCanvas);
-    // return currentCanvas;
-    return canvasData;
+    return currentCanvas;
 }
 
 float *updateCanvas(float *currentCanvas, int step) {
     float *canvasData;
     canvasData = new float[(SCR_WIDTH * SCR_HEIGHT) * 4];
     int i = 0;
-    for (int row = 0; row < SCR_WIDTH; row++) {
-        for (int col = 0; col < SCR_HEIGHT; col++) {
+
+    for (int col = 0; col < SCR_WIDTH; col++) {
+        for (int row = 0; row < SCR_HEIGHT; row++) {
 
             // access current pixel
             float currentRed = *(currentCanvas + (i));
