@@ -32,6 +32,7 @@ int drawSecondary = false;
 // const unsigned int SCR_HEIGHT = 100;
 
 enum particleTypes{
+    UPDATED,
     EMPTY,
     WALL,
     SAND,
@@ -302,9 +303,7 @@ float *updateCanvas(float *currentCanvas, int step) {
 
             // need to check if particle from last update moved into this position
             // need to keep track of updated positions here and skip if updated?
-            // if (oldParticleType == EMPTY && updatedParticleType != EMPTY) {
-            //     drawParticle(&canvasData[i], updatedParticleType);
-            // } else {
+            if (oldParticleType != UPDATED) {
                 if (oldParticleType == WALL) {
                     drawParticle(&canvasData[i], WALL);
                 } else if (oldParticleType == SAND) {
@@ -316,7 +315,9 @@ float *updateCanvas(float *currentCanvas, int step) {
                 } else {
                     std::cout << "Reached end!!!!!!!!!!!!!!" << std::endl;
                 }
-            // }
+            } else {
+                std::cout << "found updated" << std::endl;
+            }
 
             i += 4;
         }
@@ -339,6 +340,7 @@ void processSand(int i, float *currentCanvas, float* canvasData, int step) {
         // fall down
         drawParticle(&canvasData[i], EMPTY);
         drawParticle(&canvasData[(i - (4 * SCR_WIDTH))], SAND);
+        drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH))], UPDATED);
 
     // check for sand below
     } else if (downType == SAND) {
@@ -360,28 +362,34 @@ void processSand(int i, float *currentCanvas, float* canvasData, int step) {
             // fall right
             drawParticle(&canvasData[i], EMPTY);
             drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) + 4], SAND);
+            drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH)) + 4], UPDATED);
 
         } else if (downLeftType == EMPTY) {
             // fall left
             drawParticle(&canvasData[i], EMPTY);
             drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) - 4], SAND);
+            drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH)) - 4], UPDATED);
         } else if (downLeftType == WATER) {
             // fall left
             drawParticle(&canvasData[i], WATER);
             drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) - 4], SAND);
+            drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH)) - 4], UPDATED);
 
         } else if (downRightType == WATER) {
             // fall right
             drawParticle(&canvasData[i], WATER);
             drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) + 4], SAND);
+            drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH)) + 4], UPDATED);
         } else {
             // draw sand in same spot (piling up)
             drawParticle(&canvasData[i], SAND);
+            drawParticle(&currentCanvas[i], UPDATED);
         }
     } else if (downType == WATER) {
         // sink
         drawParticle(&canvasData[i], WATER);
         drawParticle(&canvasData[(i - (4 * SCR_WIDTH))], SAND);
+        drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH))], UPDATED);
     } else if (downType == WALL) {
         // draw sand
         drawParticle(&canvasData[i], SAND);
@@ -396,13 +404,14 @@ void processWater(int i, float *currentCanvas, float* canvasData, int step) {
     float downAlpha = *(canvasData + (i) - (4 * SCR_WIDTH) + 3);
     int downType = getParticleType(downRed, downGreen, downBlue, downAlpha);
 
-    // move sand down one pixel if empty space underneath
+    // move water down one pixel if empty space underneath
     if (downType == EMPTY) {
         // fall down
         drawParticle(&canvasData[i], EMPTY);
         drawParticle(&canvasData[(i - (4 * SCR_WIDTH))], WATER);
+        drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH))], UPDATED);
 
-    } else if (downType == SAND || downType == WALL || downType == WATER) {
+    } else { // if (downType == SAND || downType == WALL || downType == WATER) {
         // check for space to the left
         float leftRed = *(canvasData + (i - 4));
         float leftGreen = *(canvasData + (i - 3));
@@ -431,28 +440,35 @@ void processWater(int i, float *currentCanvas, float* canvasData, int step) {
         float downRightAlpha = *(canvasData + (i - (4 * SCR_WIDTH) + 7));
         int downRightType = getParticleType(downRightRed, downRightGreen, downRightBlue, downRightAlpha);
 
+        // if both left and right are empty, randomly set one to WALL for randomness
+
         if (downRightType == EMPTY) {
             // fall right
             // std::cout << "fall left" << std::endl;
             drawParticle(&canvasData[i], EMPTY);
             drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) + 4], WATER);
+            drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH)) + 4], UPDATED);
         } else if (downLeftType == EMPTY) {
             // fall right
             // std::cout << "fall left" << std::endl;
             drawParticle(&canvasData[i], EMPTY);
             drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) - 4], WATER);
+            drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH)) - 4], UPDATED);
         } else if (rightType == EMPTY) {
             // std::cout << "move right" << std::endl;
             drawParticle(&canvasData[i], EMPTY);
             drawParticle(&canvasData[i + 4], WATER);
+            drawParticle(&currentCanvas[i + 4], UPDATED);
         } else if (leftType == EMPTY) {
             // std::cout << "move left" << std::endl;
             drawParticle(&canvasData[i], EMPTY);
             drawParticle(&canvasData[i - 4], WATER);
+            drawParticle(&currentCanvas[i - 4], UPDATED);
         } else {
             // draw water in same spot (piling up)
             // std::cout << "stay still" << std::endl;
             drawParticle(&canvasData[i], WATER);
+            drawParticle(&currentCanvas[i], UPDATED);
         }
     } /*else if (downType == WATER) {
         drawParticle(&canvasData[i], WATER);
@@ -484,7 +500,14 @@ int getParticleType(float r, float g, float b, float a) {
                a == (float)(1))
     {
         return WATER;
+    } else if (r == (float)((1)/255.0) &&
+               g == (float)((1)/255.0) &&
+               b == (float)((1)/255.0) &&
+               a == (float)(1))
+    {
+        return UPDATED;
     } else {
+        // std::cout << "Invalid type" << std::endl;
         return EMPTY;
     }
 }
@@ -510,6 +533,11 @@ void drawParticle(float *canvasLocation, int particleType)
         *canvasLocation = (float)((17)/(255.0));
         *(canvasLocation + 1) = (float)((65)/(255.0));
         *(canvasLocation + 2) = (float)((166)/(255.0));
+        *(canvasLocation + 3) = (float)(1);
+    } else if (particleType == UPDATED) {
+        *canvasLocation = (float)((1)/(255.0));
+        *(canvasLocation + 1) = (float)((1)/(255.0));
+        *(canvasLocation + 2) = (float)((1)/(255.0));
         *(canvasLocation + 3) = (float)(1);
     }
 }
