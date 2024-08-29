@@ -33,6 +33,7 @@ int drawSecondary = false;
 
 enum particleTypes{
     UPDATED,
+    RANDOM_BLOCK,
     EMPTY,
     WALL,
     SAND,
@@ -301,9 +302,8 @@ float *updateCanvas(float *currentCanvas, int step) {
             float canvasAlpha = *(canvasData + (i) + 3);
             int updatedParticleType = getParticleType(canvasRed, canvasGreen, canvasBlue, canvasAlpha);
 
-            // need to check if particle from last update moved into this position
             // need to keep track of updated positions here and skip if updated?
-            if (oldParticleType != UPDATED) {
+            if (oldParticleType != UPDATED || (oldParticleType == UPDATED && updatedParticleType == EMPTY)) {
                 if (oldParticleType == WALL) {
                     drawParticle(&canvasData[i], WALL);
                 } else if (oldParticleType == SAND) {
@@ -316,7 +316,7 @@ float *updateCanvas(float *currentCanvas, int step) {
                     std::cout << "Reached end!!!!!!!!!!!!!!" << std::endl;
                 }
             } else {
-                std::cout << "found updated" << std::endl;
+                // std::cout << "found updated" << std::endl;
             }
 
             i += 4;
@@ -404,6 +404,8 @@ void processWater(int i, float *currentCanvas, float* canvasData, int step) {
     float downAlpha = *(canvasData + (i) - (4 * SCR_WIDTH) + 3);
     int downType = getParticleType(downRed, downGreen, downBlue, downAlpha);
 
+    drawParticle(&currentCanvas[i], UPDATED);
+    
     // move water down one pixel if empty space underneath
     if (downType == EMPTY) {
         // fall down
@@ -411,7 +413,7 @@ void processWater(int i, float *currentCanvas, float* canvasData, int step) {
         drawParticle(&canvasData[(i - (4 * SCR_WIDTH))], WATER);
         drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH))], UPDATED);
 
-    } else { // if (downType == SAND || downType == WALL || downType == WATER) {
+    } else { 
         // check for space to the left
         float leftRed = *(canvasData + (i - 4));
         float leftGreen = *(canvasData + (i - 3));
@@ -441,32 +443,49 @@ void processWater(int i, float *currentCanvas, float* canvasData, int step) {
         int downRightType = getParticleType(downRightRed, downRightGreen, downRightBlue, downRightAlpha);
 
         // if both left and right are empty, randomly set one to WALL for randomness
+        if (downRightType == EMPTY && downLeftType == EMPTY) {
+            if ((rand() % 100) < 33) {
+                downRightType = RANDOM_BLOCK;
+            } else if ((rand() % 100) < 66) {
+                downLeftType = RANDOM_BLOCK;
+                downRightType = RANDOM_BLOCK;
+            } else {
+                downLeftType = RANDOM_BLOCK;
+            }
+        }
+
+        if (rightType == EMPTY && leftType == EMPTY) {
+            if ((rand() % 100) < 33) {
+                rightType = RANDOM_BLOCK;
+            } else if ((rand() % 100) < 66) {
+                rightType = RANDOM_BLOCK;
+                leftType = RANDOM_BLOCK;
+            } else {
+                leftType = RANDOM_BLOCK;
+            }
+        }
 
         if (downRightType == EMPTY) {
             // fall right
-            // std::cout << "fall left" << std::endl;
             drawParticle(&canvasData[i], EMPTY);
             drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) + 4], WATER);
             drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH)) + 4], UPDATED);
         } else if (downLeftType == EMPTY) {
             // fall right
-            // std::cout << "fall left" << std::endl;
             drawParticle(&canvasData[i], EMPTY);
             drawParticle(&canvasData[(i - (4 * SCR_WIDTH)) - 4], WATER);
             drawParticle(&currentCanvas[(i - (4 * SCR_WIDTH)) - 4], UPDATED);
         } else if (rightType == EMPTY) {
-            // std::cout << "move right" << std::endl;
+        // if (rightType == EMPTY) {
             drawParticle(&canvasData[i], EMPTY);
             drawParticle(&canvasData[i + 4], WATER);
             drawParticle(&currentCanvas[i + 4], UPDATED);
         } else if (leftType == EMPTY) {
-            // std::cout << "move left" << std::endl;
             drawParticle(&canvasData[i], EMPTY);
             drawParticle(&canvasData[i - 4], WATER);
             drawParticle(&currentCanvas[i - 4], UPDATED);
         } else {
             // draw water in same spot (piling up)
-            // std::cout << "stay still" << std::endl;
             drawParticle(&canvasData[i], WATER);
             drawParticle(&currentCanvas[i], UPDATED);
         }
@@ -506,6 +525,12 @@ int getParticleType(float r, float g, float b, float a) {
                a == (float)(1))
     {
         return UPDATED;
+    } else if (r == (float)((2)/255.0) &&
+               g == (float)((2)/255.0) &&
+               b == (float)((2)/255.0) &&
+               a == (float)(2))
+    {
+        return RANDOM_BLOCK;
     } else {
         // std::cout << "Invalid type" << std::endl;
         return EMPTY;
@@ -539,6 +564,11 @@ void drawParticle(float *canvasLocation, int particleType)
         *(canvasLocation + 1) = (float)((1)/(255.0));
         *(canvasLocation + 2) = (float)((1)/(255.0));
         *(canvasLocation + 3) = (float)(1);
+    } else if (particleType == RANDOM_BLOCK) {
+        *canvasLocation = (float)((2)/(255.0));
+        *(canvasLocation + 1) = (float)((2)/(255.0));
+        *(canvasLocation + 2) = (float)((2)/(255.0));
+        *(canvasLocation + 3) = (float)(2);
     }
 }
 
