@@ -13,7 +13,8 @@ float *updateCanvas(float *currentCanvas, int update);
 void processSand(int i, float *currentCanvas, float* canvasData, int step);
 void processWater(int i, float *currentCanvas, float* canvasData, int step);
 
-float *draw(float *currentCanvas, double xpos, double ypos, int particleType);
+void draw_detection_callback(GLFWwindow *window, int button, int action, int mods);
+void draw(float *currentCanvas, double xpos, double ypos, int particleType);
 
 int getParticleType(float r, float g, float b, float a);
 void drawParticle(float *canvasLocation, int particleType);
@@ -22,9 +23,11 @@ void processInput(GLFWwindow *window);
 void initializeCanvas();
 
 // settings
-const unsigned int SCR_WIDTH = 837;
+const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
+int drawPrimary = false;
+int drawSecondary = false;
 // const unsigned int SCR_WIDTH = 100;
 // const unsigned int SCR_HEIGHT = 100;
 
@@ -58,6 +61,8 @@ int main()
 	}
 	glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    glfwSwapInterval(1);
 
 	// glad: load all OpenGL function pointers
     std::cout << "Loading OpenGL function pointers..."  << std::endl;
@@ -127,12 +132,7 @@ int main()
     std::cout << "Creating texture..."  << std::endl;
     unsigned int texture1;
     glGenTextures(1, &texture1);
-    // glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture1);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, canvasData);
     glGenerateMipmap(GL_TEXTURE_2D);
@@ -152,26 +152,30 @@ int main()
     int step = 0;
     double xpos, ypos;
 
+    glfwSetMouseButtonCallback(window, draw_detection_callback);
+
 	// render loop
 	while (!glfwWindowShouldClose(window))
 	{
+	    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		// input
 		processInput(window);
         glfwGetCursorPos(window, &xpos, &ypos);
-        int leftMouseButtonState = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
-        int rightMouseButtonState = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT);
-        if (leftMouseButtonState == GLFW_PRESS) {
-            drawUpdate = draw(canvasData, xpos, ypos, SAND);
-            canvasUpdate = updateCanvas(drawUpdate, step);
-        } else if (rightMouseButtonState == GLFW_PRESS) {
-            drawUpdate = draw(canvasData, xpos, ypos, WATER);
-            canvasUpdate = updateCanvas(drawUpdate, step);
-        } else {
-            canvasUpdate = updateCanvas(canvasData, step);
+        // std::cout << "xpos: " << xpos << std::endl;
+        // std::cout << "ypos: " << ypos << std::endl;
+        if (drawPrimary) {
+            draw(canvasData, xpos, ypos, SAND);
+            // drawUpdate = draw(canvasData, xpos, ypos, SAND);
+            // canvasUpdate = updateCanvas(canvasData, step);
+        } else if (drawSecondary) {
+            draw(canvasData, xpos, ypos, WATER);
+            // drawUpdate = draw(canvasData, xpos, ypos, WATER);
+            // canvasUpdate = updateCanvas(canvasData, step);
+        // } else {
+            // canvasUpdate = updateCanvas(canvasData, step);
         }
 
-        // update texture
-        // canvasUpdate = updateCanvas(drawUpdate, step);
+        canvasUpdate = updateCanvas(canvasData, step);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, canvasUpdate);
         // std::cout << "data:" << canvasData  << std::endl;
         // std::cout << "update:" << canvasUpdate  << std::endl;
@@ -191,9 +195,10 @@ int main()
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+		glfwPollEvents();
+
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		glfwSwapBuffers(window);
-		glfwPollEvents();
 	}
 
     glDeleteVertexArrays(1, &VAO);
@@ -205,17 +210,33 @@ int main()
 	return 0;
 }
 
+void draw_detection_callback(GLFWwindow * window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            drawPrimary = true;
+        } else if (action == GLFW_RELEASE) {
+            drawPrimary = false;
+        }
+    } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+        if (action == GLFW_PRESS) {
+            drawSecondary = true;
+        } else if (action == GLFW_RELEASE) {
+            drawSecondary = false;
+        }
+    }
+}
+
 float *generateCanvas() {
     std::cout << "Generating canvas..."  << std::endl;
     float *canvasData;
     canvasData = new float[(SCR_WIDTH * SCR_HEIGHT) * 4];
     int value = 0;
     int i = 0;
-    for(int col = 0; col < SCR_WIDTH; col++) {
-        for(int row = 0; row < SCR_HEIGHT; row++) {
+    for(int row = 0; row < SCR_HEIGHT; row++) {
+        for(int col = 0; col < SCR_WIDTH; col++) {
         
             // create wall on the bottom
-            if (col <= 20) {
+            if (row < 20) {
                 canvasData[i] = (float)((117)/255.0);
                 canvasData[i + 1] = (float)((116)/255.0);
                 canvasData[i + 2] = (float)((103)/255.0);
@@ -238,14 +259,13 @@ float *generateCanvas() {
 //     float a = (float)(1);
 // }
 
-float *draw(float *currentCanvas, double xpos, double ypos, int particleType) {
-    float *canvasData;
-    canvasData = new float[(SCR_WIDTH * SCR_HEIGHT) * 4];
+// float *draw(float *currentCanvas, double xpos, double ypos, int particleType) {
+void draw(float *currentCanvas, double xpos, double ypos, int particleType) {
     int i = 0;
 
     // access current pixel
     double translatedYPos = std::abs(SCR_HEIGHT - ypos);
-    int index = (int)((xpos * 4) + (translatedYPos *  4 * SCR_WIDTH));
+    int index = 4 * (int(translatedYPos) *  SCR_WIDTH + int(xpos));
 
     for (int i = 0; i < 10; i++) {
         drawParticle(&currentCanvas[index + (i * 4)], particleType);
@@ -254,7 +274,7 @@ float *draw(float *currentCanvas, double xpos, double ypos, int particleType) {
         }
     }
 
-    return currentCanvas;
+    // return currentCanvas;
 }
 
 float *updateCanvas(float *currentCanvas, int step) {
@@ -262,8 +282,10 @@ float *updateCanvas(float *currentCanvas, int step) {
     canvasData = new float[(SCR_WIDTH * SCR_HEIGHT) * 4];
     int i = 0;
 
-    for (int col = 0; col < SCR_WIDTH; col++) {
-        for (int row = 0; row < SCR_HEIGHT; row++) {
+    // for (int col = 0; col < SCR_WIDTH; col++) {
+    //     for (int row = 0; row < SCR_HEIGHT; row++) {
+    for (int row = 0; row < SCR_HEIGHT; row++) {
+        for (int col = 0; col < SCR_WIDTH; col++) {
 
             // access current pixel
             float currentRed = *(currentCanvas + (i));
@@ -279,9 +301,10 @@ float *updateCanvas(float *currentCanvas, int step) {
             int updatedParticleType = getParticleType(canvasRed, canvasGreen, canvasBlue, canvasAlpha);
 
             // need to check if particle from last update moved into this position
-            if (oldParticleType == EMPTY && updatedParticleType != EMPTY) {
-                drawParticle(&canvasData[i], updatedParticleType);
-            } else {
+            // need to keep track of updated positions here and skip if updated?
+            // if (oldParticleType == EMPTY && updatedParticleType != EMPTY) {
+            //     drawParticle(&canvasData[i], updatedParticleType);
+            // } else {
                 if (oldParticleType == WALL) {
                     drawParticle(&canvasData[i], WALL);
                 } else if (oldParticleType == SAND) {
@@ -293,7 +316,7 @@ float *updateCanvas(float *currentCanvas, int step) {
                 } else {
                     std::cout << "Reached end!!!!!!!!!!!!!!" << std::endl;
                 }
-            }
+            // }
 
             i += 4;
         }
@@ -489,7 +512,6 @@ void drawParticle(float *canvasLocation, int particleType)
         *(canvasLocation + 2) = (float)((166)/(255.0));
         *(canvasLocation + 3) = (float)(1);
     }
-
 }
 
 void processInput(GLFWwindow *window)
@@ -517,6 +539,4 @@ void initializeCanvas()
         1.0f, -1.0f, 0.0f,
         -1.0f, -1.0f, 0.0f,
     };
-
-
 }
