@@ -124,6 +124,18 @@ int right(int index) {
     return index + 1;
 }
 
+int up(int index) {
+    return index - canvas_width;
+}
+
+int up_left(int index) {
+    return index - canvas_width - 1;
+}
+
+int up_right(int index) {
+    return index - canvas_width + 1;
+}
+
 void place_material(int material, int radius) {
     for (int i = -placement_radius / 2; i < placement_radius / 2; i++) {
         size_t x = draw_position[0] + i;
@@ -286,7 +298,12 @@ void processSand(int index) {
 
         if (down_neighbor == WALL) {
             next_canvas[index] = SAND;
-            updated[index] = SAND;
+            updated[index] = true;
+        } else if (down_neighbor == WATER) {
+            next_canvas[index] = WATER;
+            next_canvas[down(index)] = SAND;
+            updated[index] = true;
+            updated[down(index)] = true;
         } else if (down_left_neighbor == EMPTY) {
             next_canvas[index] = EMPTY;
             next_canvas[down_left(index)] = SAND;
@@ -304,6 +321,55 @@ void processSand(int index) {
 }
 
 void processWater(int index) {
+    if ((index + canvas_width + 1) < canvas_width * canvas_height) {
+        int left_neighbor = canvas[left(index)];
+        int right_neighbor = canvas[right(index)];
+        int down_neighbor = canvas[down(index)];
+        int down_left_neighbor = canvas[down_left(index)];
+        int down_right_neighbor = canvas[down_right(index)];
+
+        if (left_neighbor == EMPTY && left_neighbor == EMPTY) {
+            int random_fall = step % 2;
+            if (!random_fall) {
+                left_neighbor = WALL;
+            } else {
+                right_neighbor = WALL;
+            }
+        }
+
+        if (down_neighbor == WALL) {
+            next_canvas[index] = WATER;
+            updated[index] = true;
+        } else if (down_neighbor == EMPTY) {
+            next_canvas[index] = EMPTY;
+            next_canvas[down(index)] = WATER;
+            updated[down(index)] = true;
+        } else if (left_neighbor == EMPTY) {
+            next_canvas[index] = EMPTY;
+            next_canvas[left(index)] = WATER;
+            updated[left(index)] = true;
+        } else if (right_neighbor == EMPTY) {
+            next_canvas[index] = EMPTY;
+            next_canvas[right(index)] = WATER;
+            updated[right(index)] = true;
+        } else if (left_neighbor == SAND) {
+            // erosion
+            if (step % 20) {
+                next_canvas[index] = SAND;
+                next_canvas[left(index)] = WATER;
+                updated[index] = true;
+                updated[left(index)] = true;
+            }
+        } else if (right_neighbor == SAND) {
+            // erosion
+            if (step % 20) {
+                next_canvas[index] = SAND;
+                next_canvas[right(index)] = WATER;
+                updated[index] = true;
+                updated[right(index)] = true;
+            }
+        }
+    }
 
 }
 
