@@ -6,15 +6,29 @@
 
 #include <stdio.h>
 #include <time.h>
+
 #include "sokol_gfx.h"
 #include "sokol_app.h"
 #include "sokol_glue.h"
 #include "sokol_log.h"
 #include "basic.glsl.h"
 
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+#define NK_INCLUDE_FONT_BAKING
+#define NK_INCLUDE_DEFAULT_FONT
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_IMPLEMENTATION
+#include "nuklear.h"
+#define SOKOL_NUKLEAR_IMPL
+#include "sokol_nuklear.h"
+
+static int draw_ui(struct nk_context *ctx);
+
 // nice that we can define shaders inline - uncertain if this works
 // across all platforms
-
 // vertex Shader
 static const char* vs_source = 
     "#version 330\n"
@@ -79,8 +93,8 @@ sg_pass_action pass_action;
 sg_bindings bind;
 sg_pipeline pip;
 
-size_t canvas_width = 800;
-size_t canvas_height = 600;
+size_t canvas_width = 1000;
+size_t canvas_height = 800;
 
 int *canvas; // current world state
 int *next_canvas; // next world state
@@ -99,8 +113,8 @@ enum {
 float draw_position[2];
 bool drawPrimary = false;
 bool drawSecondary = false;
-int primaryMaterial = SAND;
-int secondaryMaterial = WATER;
+int primary_material = SAND;
+int secondary_material = WATER;
 /* int placement_radius = 10; */
 int placement_radius = 10;
 
@@ -279,6 +293,11 @@ void init(void) {
     if (!canvas_texture.id) {
         fprintf(stderr, "failed to create canvas texture\n");
     }
+
+    snk_setup(&(snk_desc_t){
+        .dpi_scale = sapp_dpi_scale(),
+        .logger.func = slog_func,
+    });
 }
 
 void processSand(int index) {
@@ -312,6 +331,16 @@ void processSand(int index) {
             next_canvas[index] = EMPTY;
             next_canvas[down_right(index)] = SAND;
             updated[down_right(index)] = true;
+        } else if (down_neighbor == WATER) {
+            if (step % 50 == 0) {
+                next_canvas[index] = WATER;
+                next_canvas[down(index)] = SAND;
+                updated[index] = true;
+                updated[down(index)] = true;
+            } else {
+                next_canvas[index] = SAND;
+                updated[index] = true;
+            }
         } else if (down_neighbor == EMPTY) {
             next_canvas[index] = EMPTY;
             next_canvas[down(index)] = SAND;
@@ -337,10 +366,7 @@ void processWater(int index) {
             }
         }
 
-        if (down_neighbor == WALL) {
-            next_canvas[index] = WATER;
-            updated[index] = true;
-        } else if (down_neighbor == EMPTY) {
+        if (down_neighbor == EMPTY) {
             next_canvas[index] = EMPTY;
             next_canvas[down(index)] = WATER;
             updated[down(index)] = true;
@@ -354,7 +380,7 @@ void processWater(int index) {
             updated[right(index)] = true;
         } else if (left_neighbor == SAND) {
             // erosion
-            if (step % 20) {
+            if (step % 3 == 0) {
                 next_canvas[index] = SAND;
                 next_canvas[left(index)] = WATER;
                 updated[index] = true;
@@ -362,12 +388,18 @@ void processWater(int index) {
             }
         } else if (right_neighbor == SAND) {
             // erosion
-            if (step % 20) {
+            if (step % 3 == 0) {
                 next_canvas[index] = SAND;
                 next_canvas[right(index)] = WATER;
                 updated[index] = true;
                 updated[right(index)] = true;
             }
+        } else if (down_neighbor == WATER) {// if (down_neighbor == WATER) {
+            next_canvas[index] = WATER;
+            updated[index] = true;
+        } else if (down_neighbor == WALL) {
+            next_canvas[index] = WATER;
+            updated[index] = true;
         }
     }
 
@@ -419,12 +451,13 @@ void process_world() {
 }
 
 void frame(void) {
-
+    struct nk_context *ctx = snk_new_frame();
+    draw_ui(ctx);
     // handle user input
     if (drawPrimary) {
-        place_material(primaryMaterial, placement_radius);
+        place_material(primary_material, placement_radius);
     } else if (drawSecondary) {
-        place_material(secondaryMaterial, placement_radius);
+        place_material(secondary_material, placement_radius);
     }
 
     // run simulation frame
@@ -460,7 +493,9 @@ void frame(void) {
     sg_draw(0, 6, 1);
     
     /* __dbgui_draw(); */
-    
+   
+    snk_render(sapp_width(), sapp_height());
+
     // finish rendering pass
     sg_end_pass();
 
@@ -473,10 +508,15 @@ void cleanup(void) {
     free(canvas);
     free(next_canvas);
     free(updated);
+    snk_shutdown();
     sg_shutdown();
 }
 
 void event(const sapp_event* e) {
+     if (snk_handle_event(e)) {
+        return;
+    }
+
     if (e->type == SAPP_EVENTTYPE_KEY_DOWN) {
         if (e->key_code == SAPP_KEYCODE_ESCAPE) {
             sapp_request_quit();
@@ -525,4 +565,52 @@ sapp_desc sokol_main(int argc, char* argv[]) {
         .window_title = "sandy",
         .logger.func = slog_func,
     };
+}
+
+/* copied from: https://github.com/Immediate-Mode-UI/Nuklear/blob/master/demo/overview.c */
+#if defined(__GNUC__)
+#if defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+#endif
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
+
+void handle_material_button(struct nk_context *ctx, const char *label,
+                            int material) {
+    struct nk_rect bounds = nk_widget_bounds(ctx);
+    nk_button_label(ctx, label);
+
+    if (nk_input_is_mouse_hovering_rect(&ctx->input, bounds)) {
+        if (nk_input_is_mouse_pressed(&ctx->input, NK_BUTTON_LEFT)) {
+            primary_material = material;
+        } else if (nk_input_is_mouse_pressed(&ctx->input, NK_BUTTON_RIGHT)) {
+            secondary_material = material;
+        }
+    }
+};
+
+static int draw_ui(struct nk_context *ctx) {
+    static int movable = nk_true;
+    static int minimizable = nk_true;
+    static int resize = nk_true;
+    static nk_flags window_flags = 0;
+
+    window_flags = 0;
+    /* ctx->style.window.header.align = header_align; */
+    if (resize) window_flags |= NK_WINDOW_SCALABLE;
+    if (movable) window_flags |= NK_WINDOW_MOVABLE;
+    if (minimizable) window_flags |= NK_WINDOW_MINIMIZABLE;
+
+    if (nk_begin(ctx, "UI", nk_rect(10, 25, 400, 200), window_flags)) {
+        nk_layout_row_static(ctx, 30, 100, 3);
+        handle_material_button(ctx, "Wall", WALL);
+        handle_material_button(ctx, "Sand", SAND);
+        handle_material_button(ctx, "Water", WATER);
+        /* if (nk_button_label(ctx, "Sand")) { */
+        /*     printf("sand pressed\n"); */
+        /* } */
+    }
+
+    nk_end(ctx);
+    return !nk_window_is_closed(ctx, "UI");
 }
