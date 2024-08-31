@@ -1,10 +1,11 @@
-#include <stdio.h>
 #define SOKOL_IMPL
 #define SOKOL_APP_IMPL
 #define SOKOL_GLUE_IMPL
 #define SOKOL_GLCORE
 #define SOKOL_DEBUG
 
+#include <stdio.h>
+#include <time.h>
 #include "sokol_gfx.h"
 #include "sokol_app.h"
 #include "sokol_glue.h"
@@ -103,6 +104,26 @@ int secondaryMaterial = WATER;
 /* int placement_radius = 10; */
 int placement_radius = 10;
 
+int down(int index) {
+    return index + canvas_width;
+}
+
+int down_left(int index) {
+    return index + canvas_width - 1;
+}
+
+int down_right(int index) {
+    return index + canvas_width + 1;
+}
+
+int left(int index) {
+    return index - 1;
+}
+
+int right(int index) {
+    return index + 1;
+}
+
 void place_material(int material, int radius) {
     for (int i = -placement_radius / 2; i < placement_radius / 2; i++) {
         size_t x = draw_position[0] + i;
@@ -145,6 +166,8 @@ sg_image_desc canvas_desc;
 sg_image canvas_texture;
 
 void init(void) {
+    srand((unsigned int)time(NULL));
+
     sg_setup(&(sg_desc){
         .environment = sglue_environment(),
         .logger.func = slog_func,
@@ -248,9 +271,9 @@ void init(void) {
 
 void processSand(int index) {
     if ((index + canvas_width + 1) < canvas_width * canvas_height) {
-        int down_neighbor = canvas[index + canvas_width];
-        int down_left_neighbor = canvas[index + (canvas_width - 1)];
-        int down_right_neighbor = canvas[index + (canvas_width + 1)];
+        int down_neighbor = canvas[down(index)];
+        int down_left_neighbor = canvas[down_left(index)];
+        int down_right_neighbor = canvas[down_right(index)];
 
         if (down_left_neighbor == EMPTY && down_right_neighbor == EMPTY) {
             int random_fall = step % 2;
@@ -266,16 +289,16 @@ void processSand(int index) {
             updated[index] = SAND;
         } else if (down_left_neighbor == EMPTY) {
             next_canvas[index] = EMPTY;
-            next_canvas[index + canvas_width - 1] = SAND;
-            updated[index + canvas_width - 1] = true;
-        } else if (down_left_neighbor == EMPTY) {
+            next_canvas[down_left(index)] = SAND;
+            updated[down_left(index)] = true;
+        } else if (down_right_neighbor == EMPTY) {
             next_canvas[index] = EMPTY;
-            next_canvas[index + canvas_width - 1] = SAND;
-            updated[index + canvas_width - 1] = true;
+            next_canvas[down_right(index)] = SAND;
+            updated[down_right(index)] = true;
         } else if (down_neighbor == EMPTY) {
             next_canvas[index] = EMPTY;
-            next_canvas[index + canvas_width] = SAND;
-            updated[index + canvas_width] = true;
+            next_canvas[down(index)] = SAND;
+            updated[down(index)] = true;
         }
     }
 }
@@ -284,21 +307,38 @@ void processWater(int index) {
 
 }
 
+void shuffle(int *array, size_t n) {
+    if (n > 1) {
+        for (size_t i = 0; i < n - 1; i++) {
+            size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
+            int tmp = array[j];
+            array[j] = array[i];
+            array[i] = tmp;
+        }
+    }
+} 
+
 void process_world() {
-    // this should shuffle indices then loop randomly
+    int indices[canvas_width * canvas_height];
     for (int i = 0; i < canvas_width * canvas_height; i++) {
-        int material = canvas[i];
+        indices[i] = i;
+    }
+    shuffle(indices, canvas_width * canvas_height);
+
+    for (int i = 0; i < canvas_width * canvas_height; i++) {
+        int index = indices[i];
+        int material = canvas[index];
 
         if (!updated[i]) {
             if (material == EMPTY) {
-                next_canvas[i] = EMPTY;
+                next_canvas[index] = EMPTY;
             } else if (material == WALL) {
-                next_canvas[i] = WALL;
+                next_canvas[index] = WALL;
                 updated[i] = true;
             } else if (material == SAND) {
-                processSand(i);
+                processSand(index);
             } else if (material == WATER) {
-                processWater(i);
+                processWater(index);
             }
         }
     }
