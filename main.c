@@ -93,9 +93,10 @@ sg_pass_action pass_action;
 sg_bindings bind;
 sg_pipeline pip;
 
-size_t canvas_width = 1000;
-size_t canvas_height = 800;
+size_t canvas_width = 800;
+size_t canvas_height = 600;
 
+int *shuffled_indices;
 int *canvas; // current world state
 int *next_canvas; // next world state
 int *updated; // track updated cells
@@ -187,6 +188,22 @@ void draw_material(int index, int material) {
     }
 }
 
+int static_rand[60000];
+
+void shuffle(int *array, size_t n) {
+    if (n > 1) {
+        for (size_t i = 0; i < n - 1; i++) {
+            /* size_t j = i + rand() / (RAND_MAX / (n - i) + 1); */
+            if ((step + i) % 3 == 0) {
+                size_t j = i + rand() % (n - i);
+                /* size_t j = i + (static_rand[(i + step) % (n - 1)]) % (n - i); */
+                int tmp = array[j];
+                array[j] = array[i];
+                array[i] = tmp;
+            }
+        }
+    }
+} 
 
 sg_image_desc canvas_desc;
 sg_image canvas_texture;
@@ -276,12 +293,19 @@ void init(void) {
     next_canvas = malloc(canvas_width * canvas_height * sizeof(int));
     updated = malloc(canvas_width * canvas_height * sizeof(int));
     world_pixels = malloc(canvas_width * canvas_height * 4 * sizeof(uint8_t));
+    shuffled_indices = malloc(canvas_width * canvas_height * sizeof(int));
     for (size_t i = 0; i < canvas_width * canvas_height; i++) {
         canvas[i] = 0;
         next_canvas[i] = 0;
         updated[i] = 0;
+        shuffled_indices[i] = i;
     }
+    shuffle(shuffled_indices, canvas_width * canvas_height);
     
+    for (int i = 0; i < 60000; i++) {
+        static_rand[i] = rand();
+    }
+
     // initialize canvas texture
     canvas_desc = (sg_image_desc){
         .width = canvas_width,
@@ -300,7 +324,7 @@ void init(void) {
     });
 }
 
-void processSand(int index) {
+void process_sand(int index) {
     if ((index + canvas_width + 1) < canvas_width * canvas_height) {
         int down_neighbor = canvas[down(index)];
         int down_left_neighbor = canvas[down_left(index)];
@@ -349,7 +373,7 @@ void processSand(int index) {
     }
 }
 
-void processWater(int index) {
+void process_water(int index) {
     if ((index + canvas_width + 1) < canvas_width * canvas_height) {
         int left_neighbor = canvas[left(index)];
         int right_neighbor = canvas[right(index)];
@@ -405,26 +429,14 @@ void processWater(int index) {
 
 }
 
-void shuffle(int *array, size_t n) {
-    if (n > 1) {
-        for (size_t i = 0; i < n - 1; i++) {
-            size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
-            int tmp = array[j];
-            array[j] = array[i];
-            array[i] = tmp;
-        }
-    }
-} 
-
 void process_world() {
-    int indices[canvas_width * canvas_height];
-    for (int i = 0; i < canvas_width * canvas_height; i++) {
-        indices[i] = i;
+
+    if (step % 2 == 0) {
+        shuffle(shuffled_indices, canvas_width * canvas_height);
     }
-    shuffle(indices, canvas_width * canvas_height);
 
     for (int i = 0; i < canvas_width * canvas_height; i++) {
-        int index = indices[i];
+        int index = shuffled_indices[(i + step) % (canvas_width * canvas_height)];
         int material = canvas[index];
 
         if (!updated[i]) {
@@ -434,9 +446,9 @@ void process_world() {
                 next_canvas[index] = WALL;
                 updated[i] = true;
             } else if (material == SAND) {
-                processSand(index);
+                process_sand(index);
             } else if (material == WATER) {
-                processWater(index);
+                process_water(index);
             }
         }
     }
@@ -508,6 +520,7 @@ void cleanup(void) {
     free(canvas);
     free(next_canvas);
     free(updated);
+    free(shuffled_indices);
     snk_shutdown();
     sg_shutdown();
 }
