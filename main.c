@@ -25,7 +25,7 @@ static const char* vs_source =
     "out vec2 TexCoord;\n"
     "\n"
     "void main() {\n"
-    "    gl_Position = vec4(position, 1.0);\n"
+    "    gl_Position = vec4(position.x, -position.y, position.z, 1.0);\n"
     "    ourColor = aColor;\n"
     "    TexCoord = aTexCoord;\n"
     "}\n";
@@ -86,6 +86,8 @@ int *next_canvas; // next world state
 int *updated; // track updated cells
 uint8_t *world_pixels; // colors to send to texture for rendering
 
+size_t step = 0;
+
 enum {
     EMPTY,
     WALL,
@@ -98,13 +100,14 @@ bool drawPrimary = false;
 bool drawSecondary = false;
 int primaryMaterial = SAND;
 int secondaryMaterial = WATER;
+/* int placement_radius = 10; */
 int placement_radius = 10;
 
 void place_material(int material, int radius) {
     for (int i = -placement_radius / 2; i < placement_radius / 2; i++) {
         size_t x = draw_position[0] + i;
         for (int j = -placement_radius / 2; j < placement_radius / 2; j++) {
-            size_t y = canvas_height - draw_position[1] + j;
+            size_t y = draw_position[1] + j;
             if (x < canvas_width && y < canvas_height) {
                 int index = x + canvas_width * y;
                 canvas[index] = material;
@@ -114,7 +117,12 @@ void place_material(int material, int radius) {
 }
 
 void draw_material(int index, int material) {
-    if (material == WALL) {
+    if (material == EMPTY) {
+        world_pixels[index] = 0;
+        world_pixels[index + 1] = 0;
+        world_pixels[index + 2] = 0;
+        world_pixels[index + 3] = 0;
+    } else if (material == WALL) {
         world_pixels[index] = 170;
         world_pixels[index + 1] = 170;
         world_pixels[index + 2] = 170;
@@ -185,6 +193,11 @@ void init(void) {
                 [2].format = SG_VERTEXFORMAT_FLOAT2,
             }
         },
+        .colors[0] = {
+            .blend = {
+                .enabled = false
+            }
+        },
         .label = "triangle-pipeline"
     });
 
@@ -203,7 +216,10 @@ void init(void) {
 
     // clear framebuffer
     pass_action = (sg_pass_action) {
-        .colors[0] = { .load_action=SG_LOADACTION_CLEAR, .clear_value={0.0f, 0.0f, 0.0f, 1.0f} }
+        .colors[0] = { 
+            .load_action=SG_LOADACTION_CLEAR,
+            .clear_value={0.0f, 0.0f, 0.0f, 1.0f}
+        }
     };
 
     // initialize world
@@ -230,6 +246,72 @@ void init(void) {
     }
 }
 
+void processSand(int index) {
+    if ((index + canvas_width + 1) < canvas_width * canvas_height) {
+        int down_neighbor = canvas[index + canvas_width];
+        int down_left_neighbor = canvas[index + (canvas_width - 1)];
+        int down_right_neighbor = canvas[index + (canvas_width + 1)];
+
+        if (down_left_neighbor == EMPTY && down_right_neighbor == EMPTY) {
+            int random_fall = step % 2;
+            if (!random_fall) {
+                down_right_neighbor = WALL;
+            } else {
+                down_left_neighbor = WALL;
+            }
+        }
+
+        if (down_neighbor == WALL) {
+            next_canvas[index] = SAND;
+            updated[index] = SAND;
+        } else if (down_left_neighbor == EMPTY) {
+            next_canvas[index] = EMPTY;
+            next_canvas[index + canvas_width - 1] = SAND;
+            updated[index + canvas_width - 1] = true;
+        } else if (down_left_neighbor == EMPTY) {
+            next_canvas[index] = EMPTY;
+            next_canvas[index + canvas_width - 1] = SAND;
+            updated[index + canvas_width - 1] = true;
+        } else if (down_neighbor == EMPTY) {
+            next_canvas[index] = EMPTY;
+            next_canvas[index + canvas_width] = SAND;
+            updated[index + canvas_width] = true;
+        }
+    }
+}
+
+void processWater(int index) {
+
+}
+
+void process_world() {
+    // this should shuffle indices then loop randomly
+    for (int i = 0; i < canvas_width * canvas_height; i++) {
+        int material = canvas[i];
+
+        if (!updated[i]) {
+            if (material == EMPTY) {
+                next_canvas[i] = EMPTY;
+            } else if (material == WALL) {
+                next_canvas[i] = WALL;
+                updated[i] = true;
+            } else if (material == SAND) {
+                processSand(i);
+            } else if (material == WATER) {
+                processWater(i);
+            }
+        }
+    }
+
+    int *temp_canvas = canvas;
+    canvas = next_canvas;
+    next_canvas = canvas;
+
+    for (int i = 0; i < canvas_width * canvas_height; i++) {
+        updated[i] = false;
+    }
+}
+
 void frame(void) {
 
     // handle user input
@@ -240,17 +322,20 @@ void frame(void) {
     }
 
     // run simulation frame
-    //
+    process_world();
+    step++;
 
     size_t index = 0;
     for (size_t i = 0; i < canvas_width * canvas_height; i++) {
+        /* draw_material(index, next_canvas[i]); */
         draw_material(index, canvas[i]);
-        /* world_pixels[index] = (255 + i) % 255; */
-        /* world_pixels[index + 1] = i % 255; */
-        /* world_pixels[index + 2] = (i + index) % 255; */
-        /* world_pixels[index + 3] = 255; */
         index += 4;
-    } 
+    }
+
+    /* int *swap_canvas; */
+    /* swap_canvas = canvas; */
+    /* canvas = next_canvas; */
+    /* next_canvas = canvas; */
 
     // send pixel color buffer to texture to render
     sg_image_data canvas_update = {
