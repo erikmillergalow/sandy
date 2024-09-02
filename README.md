@@ -9,6 +9,9 @@
 
 ### Compile and run
 ```shell
+// needed for cross-platform shader compilation
+git clone https://github.com/floooh/sokol-tools-bin.git
+
 // linux
 make linux
 ./sandy
