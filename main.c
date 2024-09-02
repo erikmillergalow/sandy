@@ -1,10 +1,18 @@
-#ifdef __linux__ 
+#if defined(__linux__) || defined(__wasm__)
     #define SOKOL_IMPL
     #define SOKOL_APP_IMPL
     #define SOKOL_GLUE_IMPL
 #endif
 
-#define SOKOL_GLCORE
+
+#if defined(__linux__)
+    #define SOKOL_GLCORE
+#endif
+
+#if defined(__wasm__)
+    #define SOKOL_GLES3
+#endif
+/* #define SOKOL_GLES3 */
 #define SOKOL_DEBUG
 
 #include <stdio.h>
@@ -14,6 +22,8 @@
 #include "sokol_app.h"
 #include "sokol_glue.h"
 #include "sokol_log.h"
+#include "sokol_fetch.h"
+
 #include "basic.glsl.h"
 
 #define NK_INCLUDE_FIXED_TYPES
