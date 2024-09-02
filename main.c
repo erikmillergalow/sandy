@@ -1,4 +1,7 @@
-#define SOKOL_IMPL
+#ifdef __linux__ 
+    #define SOKOL_IMPL
+#endif
+
 #define SOKOL_APP_IMPL
 #define SOKOL_GLUE_IMPL
 #define SOKOL_GLCORE
@@ -7,7 +10,10 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "sokol_gfx.h"
+#ifdef __linux__
+    #include "sokol_gfx.h"
+#endif
+
 #include "sokol_app.h"
 #include "sokol_glue.h"
 #include "sokol_log.h"
@@ -30,34 +36,41 @@ static int draw_ui(struct nk_context *ctx);
 // nice that we can define shaders inline - uncertain if this works
 // across all platforms
 // vertex Shader
-static const char* vs_source = 
-    "#version 330\n"
-    "in vec3 position;\n"
-    "in vec3 aColor;\n"
-    "in vec2 aTexCoord;\n"
-    "\n"
-    "out vec3 ourColor;\n"
-    "out vec2 TexCoord;\n"
-    "\n"
-    "void main() {\n"
-    "    gl_Position = vec4(position.x, -position.y, position.z, 1.0);\n"
-    "    ourColor = aColor;\n"
-    "    TexCoord = aTexCoord;\n"
-    "}\n";
+/* static const char* vs_source =  */
+/*     "#version 330\n" */
+/*     "in vec3 position;\n" */
+/*     "in vec3 aColor;\n" */
+/*     "in vec2 aTexCoord;\n" */
+/*     "\n" */
+/*     "out vec3 ourColor;\n" */
+/*     "out vec2 TexCoord;\n" */
+/*     "\n" */
+/*     "void main() {\n" */
+/*     "    gl_Position = vec4(position.x, -position.y, position.z, 1.0);\n" */
+/*     "    ourColor = aColor;\n" */
+/*     "    TexCoord = aTexCoord;\n" */
+/*     "}\n"; */
+/**/
+/* // fragment Shader */
+/* static const char* fs_source =  */
+/*     "#version 330\n" */
+/*     "out vec4 FragColor;\n" */
+/*     "\n" */
+/*     "in vec3 ourColor;\n" */
+/*     "in vec2 TexCoord;\n" */
+/*     "\n" */
+/*     "uniform sampler2D ourTexture;\n" */
+/*     "\n" */
+/*     "void main() {\n" */
+/*     "    FragColor = texture(ourTexture, TexCoord);\n" */
+/*     "}\n"; */
 
-// fragment Shader
-static const char* fs_source = 
-    "#version 330\n"
-    "out vec4 FragColor;\n"
-    "\n"
-    "in vec3 ourColor;\n"
-    "in vec2 TexCoord;\n"
-    "\n"
-    "uniform sampler2D ourTexture;\n"
-    "\n"
-    "void main() {\n"
-    "    FragColor = texture(ourTexture, TexCoord);\n"
-    "}\n";
+/* static const char* fs_source = */
+/*     "#version 330\n" */
+/*     "out vec4 FragColor;\n" */
+/*     "void main() {\n" */
+/*     "    FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n" */
+/*     "}\n"; */
 
 sg_pass_action pass_action;
 /*
@@ -93,7 +106,7 @@ sg_pass_action pass_action;
 sg_bindings bind;
 sg_pipeline pip;
 
-size_t canvas_width = 800;
+size_t canvas_width = 800; 
 size_t canvas_height = 600;
 
 int *shuffled_indices;
@@ -116,7 +129,6 @@ bool drawPrimary = false;
 bool drawSecondary = false;
 int primary_material = SAND;
 int secondary_material = WATER;
-/* int placement_radius = 10; */
 int placement_radius = 10;
 
 int down(int index) {
@@ -209,6 +221,9 @@ sg_image_desc canvas_desc;
 sg_image canvas_texture;
 
 void init(void) {
+
+canvas_width = 800 * sapp_dpi_scale();
+canvas_height = 600 * sapp_dpi_scale();
     srand((unsigned int)time(NULL));
 
     sg_setup(&(sg_desc){
@@ -217,13 +232,22 @@ void init(void) {
     });
 
     // bind texture vertices 
+    /* float vertices[] = { */
+    /*     // positions         // colors           // texture coords */
+    /*     1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right */
+    /*     1.0f, -1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right */
+    /*     -1.0f, -1.0f, 0.0f,  0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left */
+    /*     -1.0f,  1.0f, 0.0f,  1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left  */
+    /* }; */
+
     float vertices[] = {
         // positions         // colors           // texture coords
-        1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-        1.0f, -1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-        -1.0f, -1.0f, 0.0f,  0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-        -1.0f,  1.0f, 0.0f,  1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
+        -1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   0.0f, 0.0f,   // top left
+        1.0f,  1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // top right
+        1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 1.0f,   // bottom right
+        -1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // bottom left
     };
+
     bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
         .size = sizeof(vertices),
         .data = SG_RANGE(vertices),
@@ -242,13 +266,13 @@ void init(void) {
         .label = "quad-indices"
     });
 
-    /* sg_shader shd = sg_make_shader(simple_shader_desc(sg_query_backend())); */
-    sg_shader_desc shader_desc = {
-        .vs.source = vs_source,
-        .fs.source = fs_source,
-        .fs.images[0] = { .image_type = SG_IMAGETYPE_2D }
-    };
-    sg_shader shader = sg_make_shader(&shader_desc);
+    sg_shader shader = sg_make_shader(simple_shader_desc(sg_query_backend()));
+    /* sg_shader_desc shader_desc = { */
+    /*     .vs.source = vs_source, */
+    /*     .fs.source = fs_source, */
+    /*     .fs.images[0] = { .image_type = SG_IMAGETYPE_2D } */
+    /* }; */
+    /* sg_shader shader = sg_make_shader(&shader_desc); */
     pip = sg_make_pipeline(&(sg_pipeline_desc){
         .shader = shader,
         .index_type = SG_INDEXTYPE_UINT16,
@@ -266,19 +290,6 @@ void init(void) {
         },
         .label = "triangle-pipeline"
     });
-
-    // not completely sure why this isn't needed anymore, must be something
-    // to do with simple_shader_desc not setting .fs.images[0].image_type?
-    //
-    // fs stands for fragment shader, NOT file system
-    // bind texture to fragment shader, set sampling options
-    /* bind.fs.images[0] = canvas_texture; */
-    /* bind.fs.samplers[0] = sg_make_sampler(&(sg_sampler_desc){ */
-    /*     .min_filter = SG_FILTER_LINEAR, */
-    /*     .mag_filter = SG_FILTER_LINEAR, */
-    /*     .wrap_u = SG_WRAP_CLAMP_TO_EDGE, */
-    /*     .wrap_v = SG_WRAP_CLAMP_TO_EDGE */
-    /* }); */
 
     // clear framebuffer
     pass_action = (sg_pass_action) {
@@ -318,6 +329,20 @@ void init(void) {
         fprintf(stderr, "failed to create canvas texture\n");
     }
 
+    // not completely sure why this isn't needed anymore, must be something
+    // to do with simple_shader_desc not setting .fs.images[0].image_type?
+    //
+    // fs stands for fragment shader, NOT file system
+    // bind texture to fragment shader, set sampling options
+    bind.fs.images[0] = canvas_texture;
+    bind.fs.samplers[0] = sg_make_sampler(&(sg_sampler_desc){
+        .min_filter = SG_FILTER_LINEAR,
+        .mag_filter = SG_FILTER_LINEAR,
+        .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+        .wrap_v = SG_WRAP_CLAMP_TO_EDGE
+    });
+
+
     snk_setup(&(snk_desc_t){
         .dpi_scale = sapp_dpi_scale(),
         .logger.func = slog_func,
@@ -339,6 +364,11 @@ void process_sand(int index) {
             }
         }
 
+        if (down_neighbor == EMPTY) {
+            next_canvas[index] = EMPTY;
+            next_canvas[down(index)] = SAND;
+            updated[down(index)] = true;
+        }else 
         if (down_neighbor == WALL) {
             next_canvas[index] = SAND;
             updated[index] = true;
@@ -365,11 +395,12 @@ void process_sand(int index) {
                 next_canvas[index] = SAND;
                 updated[index] = true;
             }
-        } else if (down_neighbor == EMPTY) {
-            next_canvas[index] = EMPTY;
-            next_canvas[down(index)] = SAND;
-            updated[down(index)] = true;
         }
+        /* } else if (down_neighbor == EMPTY) { */
+        /*     next_canvas[index] = EMPTY; */
+        /*     next_canvas[down(index)] = SAND; */
+        /*     updated[down(index)] = true; */
+        /* } */
     }
 }
 
@@ -478,15 +509,13 @@ void frame(void) {
 
     size_t index = 0;
     for (size_t i = 0; i < canvas_width * canvas_height; i++) {
-        /* draw_material(index, next_canvas[i]); */
         draw_material(index, canvas[i]);
         index += 4;
     }
 
-    /* int *swap_canvas; */
-    /* swap_canvas = canvas; */
-    /* canvas = next_canvas; */
-    /* next_canvas = canvas; */
+    float dpi_scale = sapp_dpi_scale();
+    int scaled_width = (int)(sapp_width() * dpi_scale);
+    int scaled_height = (int)(sapp_height() * dpi_scale);
 
     // send pixel color buffer to texture to render
     sg_image_data canvas_update = {
@@ -577,6 +606,7 @@ sapp_desc sokol_main(int argc, char* argv[]) {
         .height = canvas_height,
         .window_title = "sandy",
         .logger.func = slog_func,
+        /* .high_dpi = true */
     };
 }
 
