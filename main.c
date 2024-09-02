@@ -141,6 +141,18 @@ int primary_material = SAND;
 int secondary_material = WATER;
 int placement_radius = 10;
 
+// https://codingforspeed.com/using-faster-psudo-random-generator-xorshift/
+uint32_t xor128(void) {
+  static uint32_t x = 123456789;
+  static uint32_t y = 362436069;
+  static uint32_t z = 521288629;
+  static uint32_t w = 88675123;
+  uint32_t t;
+  t = x ^ (x << 11);   
+  x = y; y = z; z = w;   
+  return w = w ^ (w >> 19) ^ (t ^ (t >> 8));
+}
+
 int down(int index) {
     return index + canvas_width;
 }
@@ -171,6 +183,19 @@ int up_left(int index) {
 
 int up_right(int index) {
     return index - canvas_width + 1;
+}
+
+void apply_rule(int index, int destination, int material, int destination_material) {
+    next_canvas[index] = material;
+    next_canvas[destination] = destination_material;
+
+    if (material != EMPTY) {
+        updated[index] = true;
+    }
+
+    if (destination_material != EMPTY) {
+        updated[destination] = true;
+    }
 }
 
 void place_material(int material, int radius) {
@@ -379,19 +404,6 @@ canvas_height = 600 * sapp_dpi_scale();
     });
 }
 
-void apply_rule(int index, int destination, int material, int destination_material) {
-    next_canvas[index] = material;
-    next_canvas[destination] = destination_material;
-
-    if (material != EMPTY) {
-        updated[index] = true;
-    }
-
-    if (destination_material != EMPTY) {
-        updated[destination] = true;
-    }
-}
-
 void process_sand(int index) {
     if ((index + canvas_width + 1) < canvas_width * canvas_height) {
         int down_neighbor = canvas[down(index)];
@@ -399,7 +411,8 @@ void process_sand(int index) {
         int down_right_neighbor = canvas[down_right(index)];
 
         if (down_left_neighbor == EMPTY && down_right_neighbor == EMPTY) {
-            int random_fall = step % 2;
+            int random_fall = xor128() % 2;
+            /* int random_fall = step % 2; */
             if (!random_fall) {
                 down_right_neighbor = WALL;
             } else {
@@ -409,11 +422,16 @@ void process_sand(int index) {
 
         if (down_neighbor == EMPTY) {
             apply_rule(index, down(index), EMPTY, SAND);
-        }
-        else if (down_neighbor == WALL) {
+        /* } else if (down_neighbor == WATER) { */
+        /*     if (step % 5 == 0) { */
+        /*         apply_rule(index, down(index), WATER, SAND); */
+        /*     } else { */
+        /*         apply_rule(index, down(index), SAND, WATER); */
+        /*     } */
+        } else if (down_neighbor == WALL) {
             apply_rule(index, down(index), SAND, WALL);
         } else if (down_neighbor == WATER) {
-            if (step % 2 == 0) {
+            if (xor128() % 2 == 0) {
                 apply_rule(index, down(index), WATER, SAND);
             } else {
                 apply_rule(index, down(index), SAND, WATER);
@@ -436,7 +454,7 @@ void process_water(int index) {
         int top_neighbor = canvas[up(index)];
 
         if (left_neighbor == EMPTY && left_neighbor == EMPTY) {
-            int random_fall = step % 2;
+            int random_fall = xor128() % 2;
             if (!random_fall) {
                 left_neighbor = WALL;
             } else {
@@ -452,21 +470,21 @@ void process_water(int index) {
             apply_rule(index, right(index), EMPTY, WATER);
         } else if (left_neighbor == SAND) {
             // erosion
-            if (step % 3 == 0) {
+            if (xor128() % 5 == 0) {
                 apply_rule(index, left(index), SAND, WATER);
             } else {
                 apply_rule(index, left(index), WATER, SAND);
             }
         } else if (right_neighbor == SAND) {
             // erosion
-            if (step % 3 == 0) {
+            if (xor128() % 5 == 0) {
                 apply_rule(index, right(index), SAND, WATER);
             } else {
                 apply_rule(index, right(index), WATER, SAND);
             }
         } else if (down_neighbor == ICE || right_neighbor == ICE || 
                    left_neighbor == ICE) {
-            if (step % 5 == 0) {
+            if (xor128() % 5 == 0) {
                 next_canvas[index] = ICE;
                 updated[index] = true;
             } else {
@@ -492,16 +510,7 @@ void process_oil(int index) {
         int top_neighbor = canvas[up(index)];
 
         if (left_neighbor == EMPTY && left_neighbor == EMPTY) {
-            int random_fall = step % 2;
-            if (!random_fall) {
-                left_neighbor = WALL;
-            } else {
-                right_neighbor = WALL;
-            }
-        }
-
-        if (left_neighbor == OIL && right_neighbor == OIL) {
-            int random_fall = step % 2;
+            int random_fall = xor128() % 2;
             if (!random_fall) {
                 left_neighbor = WALL;
             } else {
@@ -510,48 +519,29 @@ void process_oil(int index) {
         }
 
         if (down_neighbor == EMPTY) {
-            next_canvas[index] = EMPTY;
-            next_canvas[down(index)] = OIL;
-            updated[down(index)] = true;
+            apply_rule(index, down(index), EMPTY, OIL);
         } else if (top_neighbor == WATER) {
-            next_canvas[up(index)] = OIL;
-            next_canvas[index] = WATER;
-            updated[up(index)] = true;
-            updated[index] = true;
+            apply_rule(index, up(index), WATER, OIL);
         } else if (left_neighbor == EMPTY) {
-            next_canvas[index] = EMPTY;
-            next_canvas[left(index)] = OIL;
-            updated[left(index)] = true;
+            apply_rule(index, left(index), EMPTY, OIL);
         } else if (right_neighbor == EMPTY) {
-            next_canvas[index] = EMPTY;
-            next_canvas[right(index)] = OIL;
-            updated[right(index)] = true;
+            apply_rule(index, right(index), EMPTY, OIL);
         } else if (left_neighbor == WATER) {
-            if (step % 5 == 0) {
-                next_canvas[index] = WATER;
-                next_canvas[left(index)] = OIL;
-                updated[index] = true;
-                updated[left(index)] = true;
+            if (xor128() % 5 == 0) {
+                apply_rule(index, left(index), WATER, OIL);
             } else {
-                next_canvas[index] = OIL;
-                updated[index] = OIL;
+                apply_rule(index, left(index), OIL, WATER);
             }
         } else if (right_neighbor == WATER) {
-            if (step % 5 == 0) {
-                next_canvas[index] = WATER;
-                next_canvas[right(index)] = OIL;
-                updated[index] = true;
-                updated[right(index)] = true;
+            if (xor128() % 5 == 0) {
+                apply_rule(index, right(index), WATER, OIL);
             } else {
-                next_canvas[index] = OIL;
-                updated[index] = OIL;
+                apply_rule(index, right(index), WATER, OIL);
             }
         } else if (down_neighbor == OIL) {
-            next_canvas[index] = OIL;
-            updated[index] = true;
+            apply_rule(index, down(index), OIL, OIL);
         } else if (down_neighbor == WALL) {
-            next_canvas[index] = OIL;
-            updated[index] = true;
+            apply_rule(index, down(index), OIL, WALL);
         }
     }
 }
