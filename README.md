@@ -1,7 +1,13 @@
-# sandy
+<h1 align="center">
+  Sandy
+  <br>
+</h1>
 
+![screenshot](assets/sandy_example.png "Screenshot")
 
-### Compile shader and build
+<h4 align="center">Yet another falling sand simulator, developed using <a href="https://github.com/floooh/sokol">sokol</a> and <a href="https://github.com/Immediate-Mode-UI/Nuklear">nuklear.</a></h4>
+
+### Compile
 ```shell
 // linux
 make linux
