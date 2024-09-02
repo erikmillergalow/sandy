@@ -791,7 +791,6 @@ void process_stone(int index) {
     } else if (down_neighbor == EMPTY) {
         apply_rule(index, down(index), EMPTY, STONE);
     }
-
 }
 
 void process_world() {
