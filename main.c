@@ -12,7 +12,6 @@
 #if defined(__wasm__)
     #define SOKOL_GLES3
 #endif
-/* #define SOKOL_GLES3 */
 #define SOKOL_DEBUG
 
 #include <stdio.h>
@@ -129,6 +128,10 @@ enum {
     WALL,
     SAND,
     WATER,
+    OIL,
+    GAS,
+    FIRE,
+    ICE,
 };
 
 float draw_position[2];
@@ -203,6 +206,26 @@ void draw_material(int index, int material) {
         world_pixels[index] = 30;
         world_pixels[index + 1] = 90;
         world_pixels[index + 2] = 220;
+        world_pixels[index + 3] = 255;
+    } else if (material == OIL) {
+        world_pixels[index] = 140;
+        world_pixels[index + 1] = 130;
+        world_pixels[index + 2] = 70;
+        world_pixels[index + 3] = 255;
+    } else if (material == GAS) {
+        world_pixels[index] = 50;
+        world_pixels[index + 1] = 130;
+        world_pixels[index + 2] = 50;
+        world_pixels[index + 3] = 255;
+    } else if (material == FIRE) {
+        world_pixels[index] = 220;
+        world_pixels[index + 1] = 30;
+        world_pixels[index + 2] = 30;
+        world_pixels[index + 3] = 255;
+    } else if (material == ICE) {
+        world_pixels[index] = 210;
+        world_pixels[index + 1] = 240;
+        world_pixels[index + 2] = 250;
         world_pixels[index + 3] = 255;
     }
 }
@@ -356,6 +379,19 @@ canvas_height = 600 * sapp_dpi_scale();
     });
 }
 
+void apply_rule(int index, int destination, int material, int destination_material) {
+    next_canvas[index] = material;
+    next_canvas[destination] = destination_material;
+
+    if (material != EMPTY) {
+        updated[index] = true;
+    }
+
+    if (destination_material != EMPTY) {
+        updated[destination] = true;
+    }
+}
+
 void process_sand(int index) {
     if ((index + canvas_width + 1) < canvas_width * canvas_height) {
         int down_neighbor = canvas[down(index)];
@@ -372,42 +408,21 @@ void process_sand(int index) {
         }
 
         if (down_neighbor == EMPTY) {
-            next_canvas[index] = EMPTY;
-            next_canvas[down(index)] = SAND;
-            updated[down(index)] = true;
-        }else 
-        if (down_neighbor == WALL) {
-            next_canvas[index] = SAND;
-            updated[index] = true;
-        } else if (down_neighbor == WATER) {
-            next_canvas[index] = WATER;
-            next_canvas[down(index)] = SAND;
-            updated[index] = true;
-            updated[down(index)] = true;
-        } else if (down_left_neighbor == EMPTY) {
-            next_canvas[index] = EMPTY;
-            next_canvas[down_left(index)] = SAND;
-            updated[down_left(index)] = true;
-        } else if (down_right_neighbor == EMPTY) {
-            next_canvas[index] = EMPTY;
-            next_canvas[down_right(index)] = SAND;
-            updated[down_right(index)] = true;
-        } else if (down_neighbor == WATER) {
-            if (step % 50 == 0) {
-                next_canvas[index] = WATER;
-                next_canvas[down(index)] = SAND;
-                updated[index] = true;
-                updated[down(index)] = true;
-            } else {
-                next_canvas[index] = SAND;
-                updated[index] = true;
-            }
+            apply_rule(index, down(index), EMPTY, SAND);
         }
-        /* } else if (down_neighbor == EMPTY) { */
-        /*     next_canvas[index] = EMPTY; */
-        /*     next_canvas[down(index)] = SAND; */
-        /*     updated[down(index)] = true; */
-        /* } */
+        else if (down_neighbor == WALL) {
+            apply_rule(index, down(index), SAND, WALL);
+        } else if (down_neighbor == WATER) {
+            if (step % 2 == 0) {
+                apply_rule(index, down(index), WATER, SAND);
+            } else {
+                apply_rule(index, down(index), SAND, WATER);
+            }
+        } else if (down_left_neighbor == EMPTY) {
+            apply_rule(index, down_left(index), EMPTY, SAND);
+        } else if (down_right_neighbor == EMPTY) {
+            apply_rule(index, down_right(index), EMPTY, SAND);
+        }
     }
 }
 
@@ -418,6 +433,7 @@ void process_water(int index) {
         int down_neighbor = canvas[down(index)];
         int down_left_neighbor = canvas[down_left(index)];
         int down_right_neighbor = canvas[down_right(index)];
+        int top_neighbor = canvas[up(index)];
 
         if (left_neighbor == EMPTY && left_neighbor == EMPTY) {
             int random_fall = step % 2;
@@ -429,42 +445,115 @@ void process_water(int index) {
         }
 
         if (down_neighbor == EMPTY) {
-            next_canvas[index] = EMPTY;
-            next_canvas[down(index)] = WATER;
-            updated[down(index)] = true;
+            apply_rule(index, down(index), EMPTY, WATER);
         } else if (left_neighbor == EMPTY) {
-            next_canvas[index] = EMPTY;
-            next_canvas[left(index)] = WATER;
-            updated[left(index)] = true;
+            apply_rule(index, left(index), EMPTY, WATER);
         } else if (right_neighbor == EMPTY) {
-            next_canvas[index] = EMPTY;
-            next_canvas[right(index)] = WATER;
-            updated[right(index)] = true;
+            apply_rule(index, right(index), EMPTY, WATER);
         } else if (left_neighbor == SAND) {
             // erosion
             if (step % 3 == 0) {
-                next_canvas[index] = SAND;
-                next_canvas[left(index)] = WATER;
-                updated[index] = true;
-                updated[left(index)] = true;
+                apply_rule(index, left(index), SAND, WATER);
+            } else {
+                apply_rule(index, left(index), WATER, SAND);
             }
         } else if (right_neighbor == SAND) {
             // erosion
             if (step % 3 == 0) {
-                next_canvas[index] = SAND;
-                next_canvas[right(index)] = WATER;
-                updated[index] = true;
-                updated[right(index)] = true;
+                apply_rule(index, right(index), SAND, WATER);
+            } else {
+                apply_rule(index, right(index), WATER, SAND);
             }
-        } else if (down_neighbor == WATER) {// if (down_neighbor == WATER) {
-            next_canvas[index] = WATER;
-            updated[index] = true;
+        } else if (down_neighbor == ICE || right_neighbor == ICE || 
+                   left_neighbor == ICE) {
+            if (step % 5 == 0) {
+                next_canvas[index] = ICE;
+                updated[index] = true;
+            } else {
+                next_canvas[index] = WATER;
+                updated[index] = true;
+            }
+        } else if (down_neighbor == WATER) {
+            apply_rule(index, down(index), WATER, WATER);
         } else if (down_neighbor == WALL) {
-            next_canvas[index] = WATER;
-            updated[index] = true;
+            apply_rule(index, down(index), WATER, WALL);
         }
     }
 
+}
+
+void process_oil(int index) {
+    if ((index + canvas_width + 1) < canvas_width * canvas_height) {
+        int left_neighbor = canvas[left(index)];
+        int right_neighbor = canvas[right(index)];
+        int down_neighbor = canvas[down(index)];
+        int down_left_neighbor = canvas[down_left(index)];
+        int down_right_neighbor = canvas[down_right(index)];
+        int top_neighbor = canvas[up(index)];
+
+        if (left_neighbor == EMPTY && left_neighbor == EMPTY) {
+            int random_fall = step % 2;
+            if (!random_fall) {
+                left_neighbor = WALL;
+            } else {
+                right_neighbor = WALL;
+            }
+        }
+
+        if (left_neighbor == OIL && right_neighbor == OIL) {
+            int random_fall = step % 2;
+            if (!random_fall) {
+                left_neighbor = WALL;
+            } else {
+                right_neighbor = WALL;
+            }
+        }
+
+        if (down_neighbor == EMPTY) {
+            next_canvas[index] = EMPTY;
+            next_canvas[down(index)] = OIL;
+            updated[down(index)] = true;
+        } else if (top_neighbor == WATER) {
+            next_canvas[up(index)] = OIL;
+            next_canvas[index] = WATER;
+            updated[up(index)] = true;
+            updated[index] = true;
+        } else if (left_neighbor == EMPTY) {
+            next_canvas[index] = EMPTY;
+            next_canvas[left(index)] = OIL;
+            updated[left(index)] = true;
+        } else if (right_neighbor == EMPTY) {
+            next_canvas[index] = EMPTY;
+            next_canvas[right(index)] = OIL;
+            updated[right(index)] = true;
+        } else if (left_neighbor == WATER) {
+            if (step % 5 == 0) {
+                next_canvas[index] = WATER;
+                next_canvas[left(index)] = OIL;
+                updated[index] = true;
+                updated[left(index)] = true;
+            } else {
+                next_canvas[index] = OIL;
+                updated[index] = OIL;
+            }
+        } else if (right_neighbor == WATER) {
+            if (step % 5 == 0) {
+                next_canvas[index] = WATER;
+                next_canvas[right(index)] = OIL;
+                updated[index] = true;
+                updated[right(index)] = true;
+            } else {
+                next_canvas[index] = OIL;
+                updated[index] = OIL;
+            }
+        } else if (down_neighbor == OIL) {
+            next_canvas[index] = OIL;
+            updated[index] = true;
+        } else if (down_neighbor == WALL) {
+            next_canvas[index] = OIL;
+            updated[index] = true;
+        }
+    }
 }
 
 void process_world() {
@@ -479,7 +568,7 @@ void process_world() {
 
         if (!updated[i]) {
             if (material == EMPTY) {
-                next_canvas[index] = EMPTY;
+                /* next_canvas[index] = EMPTY; */
             } else if (material == WALL) {
                 next_canvas[index] = WALL;
                 updated[i] = true;
@@ -487,6 +576,8 @@ void process_world() {
                 process_sand(index);
             } else if (material == WATER) {
                 process_water(index);
+            } else if (material == OIL) {
+                process_oil(index);
             }
         }
     }
@@ -651,14 +742,15 @@ static int draw_ui(struct nk_context *ctx) {
     if (movable) window_flags |= NK_WINDOW_MOVABLE;
     if (minimizable) window_flags |= NK_WINDOW_MINIMIZABLE;
 
-    if (nk_begin(ctx, "UI", nk_rect(10, 25, 400, 200), window_flags)) {
-        nk_layout_row_static(ctx, 30, 100, 3);
+    if (nk_begin(ctx, "Select materials", nk_rect(10, 10, 300, 115), window_flags)) {
+        nk_layout_row_static(ctx, 30, 60, 4);
         handle_material_button(ctx, "Wall", WALL);
         handle_material_button(ctx, "Sand", SAND);
         handle_material_button(ctx, "Water", WATER);
-        /* if (nk_button_label(ctx, "Sand")) { */
-        /*     printf("sand pressed\n"); */
-        /* } */
+        handle_material_button(ctx, "Oil", OIL);
+        handle_material_button(ctx, "Gas", GAS);
+        handle_material_button(ctx, "Fire", FIRE);
+        handle_material_button(ctx, "Ice", ICE);
     }
 
     nk_end(ctx);
