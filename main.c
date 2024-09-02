@@ -474,6 +474,8 @@ void process_water(int index) {
             apply_rule(index, down(index), EMPTY, WATER);
         } else if (down_neighbor == GAS) {
             apply_rule(index, down(index), GAS, WATER);
+        } else if (down_neighbor == FIRE) {
+            apply_rule(index, down(index), EMPTY, WATER);
         } else if (left_neighbor == EMPTY) {
             apply_rule(index, left(index), EMPTY, WATER);
         } else if (right_neighbor == EMPTY) {
@@ -702,6 +704,11 @@ void process_world() {
             } else if (material == GAS) {
                 process_gas(index);
             }
+            /* } else if (material == LAVA) { */
+            /**/
+            /* } else if (material == STONE) { */
+            /**/
+            /* } */
         }
     }
 
@@ -839,9 +846,24 @@ sapp_desc sokol_main(int argc, char* argv[]) {
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
 
+/* struct nk_color primary_color = nk_rgb(255, 0, 0); */
+/* struct nk_color secondary_color = nk_rgb(0, 0, 255); */
+
 void handle_material_button(struct nk_context *ctx, const char *label,
                             int material) {
     struct nk_rect bounds = nk_widget_bounds(ctx);
+
+    struct nk_style_button plain_style = ctx->style.button;
+    struct nk_color primary_color = nk_rgb(255, 0, 0);
+    struct nk_color secondary_color = nk_rgb(0, 0, 255);
+
+    // draw color borders to indicate selected materials
+    if (material == primary_material) {
+        ctx->style.button.border_color = primary_color;
+    } else if (material == secondary_material) {
+        ctx->style.button.border_color = secondary_color; 
+    }
+
     nk_button_label(ctx, label);
 
     if (nk_input_is_mouse_hovering_rect(&ctx->input, bounds)) {
@@ -851,6 +873,9 @@ void handle_material_button(struct nk_context *ctx, const char *label,
             secondary_material = material;
         }
     }
+
+    // reset context button border style
+    ctx->style.button = plain_style;
 };
 
 static int draw_ui(struct nk_context *ctx) {
