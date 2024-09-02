@@ -187,13 +187,15 @@ int up_right(int index) {
 
 void apply_rule(int index, int destination, int material, int destination_material) {
     next_canvas[index] = material;
-    next_canvas[destination] = destination_material;
+    if (destination != -1) {
+        next_canvas[destination] = destination_material;
+    }
 
     if (material != EMPTY) {
         updated[index] = true;
     }
 
-    if (destination_material != EMPTY) {
+    if (destination_material != EMPTY && destination_material != -1) {
         updated[destination] = true;
     }
 }
@@ -277,9 +279,9 @@ sg_image canvas_texture;
 
 void init(void) {
 
-canvas_width = 800 * sapp_dpi_scale();
-canvas_height = 600 * sapp_dpi_scale();
-    srand((unsigned int)time(NULL));
+    canvas_width = 800 * sapp_dpi_scale();
+    canvas_height = 600 * sapp_dpi_scale();
+    /* srand((unsigned int)time(NULL)); */
 
     sg_setup(&(sg_desc){
         .environment = sglue_environment(),
@@ -361,8 +363,12 @@ canvas_height = 600 * sapp_dpi_scale();
     world_pixels = malloc(canvas_width * canvas_height * 4 * sizeof(uint8_t));
     shuffled_indices = malloc(canvas_width * canvas_height * sizeof(int));
     for (size_t i = 0; i < canvas_width * canvas_height; i++) {
-        canvas[i] = 0;
-        next_canvas[i] = 0;
+        if (i + canvas_width + (20 * canvas_height) >= canvas_width * canvas_height) {
+            canvas[i] = WALL;
+        } else {
+            canvas[i] = 0;
+            next_canvas[i] = 0;
+        }
         updated[i] = 0;
         shuffled_indices[i] = i;
     }
@@ -422,12 +428,8 @@ void process_sand(int index) {
 
         if (down_neighbor == EMPTY) {
             apply_rule(index, down(index), EMPTY, SAND);
-        /* } else if (down_neighbor == WATER) { */
-        /*     if (step % 5 == 0) { */
-        /*         apply_rule(index, down(index), WATER, SAND); */
-        /*     } else { */
-        /*         apply_rule(index, down(index), SAND, WATER); */
-        /*     } */
+        } else if (down_neighbor == GAS) {
+            apply_rule(index, down(index), GAS, SAND);      
         } else if (down_neighbor == WALL) {
             apply_rule(index, down(index), SAND, WALL);
         } else if (down_neighbor == WATER) {
@@ -435,6 +437,12 @@ void process_sand(int index) {
                 apply_rule(index, down(index), WATER, SAND);
             } else {
                 apply_rule(index, down(index), SAND, WATER);
+            }
+        } else if (down_neighbor == OIL) {
+            if (xor128() % 4 == 0) {
+                apply_rule(index, down(index), OIL, SAND);
+            } else {
+                apply_rule(index, down(index), SAND, OIL);
             }
         } else if (down_left_neighbor == EMPTY) {
             apply_rule(index, down_left(index), EMPTY, SAND);
@@ -464,6 +472,8 @@ void process_water(int index) {
 
         if (down_neighbor == EMPTY) {
             apply_rule(index, down(index), EMPTY, WATER);
+        } else if (down_neighbor == GAS) {
+            apply_rule(index, down(index), GAS, WATER);
         } else if (left_neighbor == EMPTY) {
             apply_rule(index, left(index), EMPTY, WATER);
         } else if (right_neighbor == EMPTY) {
@@ -507,7 +517,7 @@ void process_oil(int index) {
         int down_neighbor = canvas[down(index)];
         int down_left_neighbor = canvas[down_left(index)];
         int down_right_neighbor = canvas[down_right(index)];
-        int top_neighbor = canvas[up(index)];
+        int up_neighbor = canvas[up(index)];
 
         if (left_neighbor == EMPTY && left_neighbor == EMPTY) {
             int random_fall = xor128() % 2;
@@ -520,7 +530,9 @@ void process_oil(int index) {
 
         if (down_neighbor == EMPTY) {
             apply_rule(index, down(index), EMPTY, OIL);
-        } else if (top_neighbor == WATER) {
+        } else if (down_neighbor == GAS) {
+            apply_rule(index, down(index), GAS, OIL);
+        } else if (up_neighbor == WATER) {
             apply_rule(index, up(index), WATER, OIL);
         } else if (left_neighbor == EMPTY) {
             apply_rule(index, left(index), EMPTY, OIL);
@@ -538,11 +550,125 @@ void process_oil(int index) {
             } else {
                 apply_rule(index, right(index), WATER, OIL);
             }
+        } else if (left_neighbor == SAND) {
+            // erosion
+            if (xor128() % 10 == 0) {
+                apply_rule(index, left(index), SAND, OIL);
+            } else {
+                apply_rule(index, left(index), OIL, SAND);
+            }
+        } else if (right_neighbor == SAND) {
+            // erosion
+            if (xor128() % 10 == 0) {
+                apply_rule(index, right(index), SAND, OIL);
+            } else {
+                apply_rule(index, right(index), OIL, SAND);
+            }
         } else if (down_neighbor == OIL) {
             apply_rule(index, down(index), OIL, OIL);
         } else if (down_neighbor == WALL) {
             apply_rule(index, down(index), OIL, WALL);
+        } else if (left_neighbor == FIRE || right_neighbor == FIRE ||
+                   down_right_neighbor == FIRE || down_left_neighbor == FIRE ||
+                   down_neighbor == FIRE) {
+            apply_rule(index, -1, FIRE, -1);
         }
+    }
+}
+
+void process_fire(int index) {
+    int up_left_neighbor = canvas[up_left(index)];
+    int up_neighbor = canvas[up(index)];
+    int up_right_neighbor = canvas[up_right(index)];
+    int left_neighbor = canvas[left(index)];
+    int right_neighbor = canvas[right(index)];
+    int down_left_neighbor = canvas[down_left(index)];
+    int down_neighbor = canvas[down(index)];
+    int down_right_neighbor = canvas[down_right(index)];
+
+    int random_move = xor128() % 8;
+
+    // burning rules
+    if (down_neighbor == OIL || down_neighbor == GAS) {
+        apply_rule(index, down(index), FIRE, FIRE);
+    } else if (down_left_neighbor == OIL || down_left_neighbor == GAS) {
+        apply_rule(index, down_left(index), FIRE, FIRE);
+    } else if (down_right_neighbor == OIL || down_right_neighbor == GAS) {
+        apply_rule(index, down_right(index), FIRE, FIRE);
+    } else if (left_neighbor == ICE) {
+        apply_rule(index, left(index), EMPTY, WATER);
+    } else if (right_neighbor == ICE) {
+        apply_rule(index, right(index), EMPTY, WATER);
+    } else if (up_neighbor == ICE) {
+        apply_rule(index, up(index), EMPTY, WATER);
+    } else if (up_left_neighbor == ICE) {
+        apply_rule(index, up_left(index), EMPTY, WATER);
+    } else if (up_right_neighbor == ICE) {
+        apply_rule(index, up_right(index), EMPTY, WATER);
+    // random movement or burnout
+    } else if (xor128() % 20 == 0) {
+        apply_rule(index, index, EMPTY, EMPTY);
+    } else if (random_move == 0 && up_left_neighbor == EMPTY) {
+        apply_rule(index, up_left(index), EMPTY, FIRE);
+    } else if (random_move == 1 && up_neighbor == EMPTY) {
+        apply_rule(index, up(index), EMPTY, FIRE);
+    } else if (random_move == 2 && up_right_neighbor == EMPTY) {
+        apply_rule(index, up_right(index), EMPTY, FIRE);
+    } else if (random_move == 3 && left_neighbor == EMPTY) {
+        apply_rule(index, left(index), EMPTY, FIRE);
+    } else if (random_move == 4 && right_neighbor == EMPTY) {
+        apply_rule(index, right(index), EMPTY, FIRE);
+    } else if (random_move == 5 && down_left_neighbor == EMPTY) {
+        apply_rule(index, down_left(index), EMPTY, FIRE);
+    } else if (random_move == 6 && down_neighbor == EMPTY) {
+        apply_rule(index, down(index), EMPTY, FIRE);
+    } else if (random_move == 7 && down_right_neighbor == EMPTY) {
+        apply_rule(index, down_right(index), EMPTY, FIRE);
+    }
+}
+
+void process_gas(int index) {
+    int up_left_neighbor = canvas[up_left(index)];
+    int up_neighbor = canvas[up(index)];
+    int up_right_neighbor = canvas[up_right(index)];
+    int left_neighbor = canvas[left(index)];
+    int right_neighbor = canvas[right(index)];
+    int down_left_neighbor = canvas[down_left(index)];
+    int down_neighbor = canvas[down(index)];
+    int down_right_neighbor = canvas[down_right(index)];
+
+    int random_move = xor128() % 8;
+
+    if (up_neighbor == WATER) {
+        apply_rule(index, up(index), GAS, WATER);
+    } else if (up_neighbor == OIL) {
+        apply_rule(index, up(index), GAS, OIL);
+    } else if (up_neighbor == SAND) {
+        apply_rule(index, up(index), GAS, SAND);
+    } else if (down_neighbor == FIRE) {
+        apply_rule(index, down(index), FIRE, FIRE);
+    } else if (down_left_neighbor == FIRE) {
+        apply_rule(index, down_left(index), FIRE, FIRE);
+    } else if (down_right_neighbor == FIRE) {
+        apply_rule(index, down_right(index), FIRE, FIRE);
+    } else if (xor128() % 20 == 0) {
+        apply_rule(index, index, GAS, GAS);
+    } else if (random_move == 0 && up_left_neighbor == EMPTY) {
+        apply_rule(index, up_left(index), EMPTY, GAS);
+    } else if (random_move == 1 && up_neighbor == EMPTY) {
+        apply_rule(index, up(index), EMPTY, GAS);
+    } else if (random_move == 2 && up_right_neighbor == EMPTY) {
+        apply_rule(index, up_right(index), EMPTY, GAS);
+    } else if (random_move == 3 && left_neighbor == EMPTY) {
+        apply_rule(index, left(index), EMPTY, GAS);
+    } else if (random_move == 4 && right_neighbor == EMPTY) {
+        apply_rule(index, right(index), EMPTY, GAS);
+    } else if (random_move == 5 && down_left_neighbor == EMPTY) {
+        apply_rule(index, down_left(index), EMPTY, GAS);
+    } else if (random_move == 6 && down_neighbor == EMPTY) {
+        apply_rule(index, down(index), EMPTY, GAS);
+    } else if (random_move == 7 && down_right_neighbor == EMPTY) {
+        apply_rule(index, down_right(index), EMPTY, GAS);
     }
 }
 
@@ -556,7 +682,10 @@ void process_world() {
         int index = shuffled_indices[(i + step) % (canvas_width * canvas_height)];
         int material = canvas[index];
 
-        if (!updated[i]) {
+        bool valid_index = (index + canvas_width + 1) < canvas_width * canvas_height &&
+                           (index - canvas_width - 1) > 0;
+
+        if (!updated[i] && valid_index) {
             if (material == EMPTY) {
                 /* next_canvas[index] = EMPTY; */
             } else if (material == WALL) {
@@ -568,6 +697,10 @@ void process_world() {
                 process_water(index);
             } else if (material == OIL) {
                 process_oil(index);
+            } else if (material == FIRE) {
+                process_fire(index);
+            } else if (material == GAS) {
+                process_gas(index);
             }
         }
     }
