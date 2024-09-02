@@ -7,16 +7,19 @@
 
 <h4 align="center">Yet another falling sand simulator, developed using <a href="https://github.com/floooh/sokol">sokol</a> and <a href="https://github.com/Immediate-Mode-UI/Nuklear">nuklear.</a></h4>
 
-### Compile
+### Compile and run
 ```shell
 // linux
 make linux
+./sandy
 
 // mac
 make mac-opengl
+./sandy
 
 // wasm
 make wasm
+emrun sandy.html
 
 ```
 
