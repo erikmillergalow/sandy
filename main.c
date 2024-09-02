@@ -1,19 +1,16 @@
 #ifdef __linux__ 
     #define SOKOL_IMPL
+    #define SOKOL_APP_IMPL
+    #define SOKOL_GLUE_IMPL
 #endif
 
-#define SOKOL_APP_IMPL
-#define SOKOL_GLUE_IMPL
 #define SOKOL_GLCORE
 #define SOKOL_DEBUG
 
 #include <stdio.h>
 #include <time.h>
 
-#ifdef __linux__
-    #include "sokol_gfx.h"
-#endif
-
+#include "sokol_gfx.h"
 #include "sokol_app.h"
 #include "sokol_glue.h"
 #include "sokol_log.h"
