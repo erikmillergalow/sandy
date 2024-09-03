@@ -1,24 +1,16 @@
 
-TARGET = sandy
+linux:
+	../sokol-tools-bin/bin/linux/sokol-shdc -i shader/basic.glsl -o include/basic.glsl.h -l glsl430
+	cc main.c -o sandy -Iinclude -lGL -ldl -lm -lX11 -lasound -lXi -lXcursor
 
-all: $(TARGET)
+mac-opengl:
+	../sokol-tools-bin/bin/linux/sokol-shdc -i shader/basic.glsl -o include/basic.glsl.h -l glsl430
+	clang main.c lib/sokol.m -o sandy -Iinclude -framework OpenGL -framework Cocoa -framework AudioToolbox
 
-UNAME_S := $(shell uname -s)
+wasm:
+	../sokol-tools-bin/bin/linux/sokol-shdc -i shader/basic.glsl -o include/basic.glsl.h -l glsl300es
+	emcc main.c -o sandy.html -Iinclude -sUSE_WEBGL2 --shell-file=web/shell.html
 
-ifeq ($(UNAME_S),Darwin)
-	INCLUDE = -I/opt/homebrew/Cellar/glfw/3.4/include
-	LIBS = -L/opt/homebrew/Cellar/glfw/3.4/lib -lglfw -framework OpenGL
-else
-	LIBS = -lglfw -lGL -lwayland-client -lwayland-egl -lwayland-cursor -lpthread -ldl 
-endif
-
-$(TARGET):
-	g++ -c src/glad.c -Iinclude
-	g++ -c src/main.cpp -Iinclude
-	g++ glad.o main.o -o $(TARGET) -Iinclude $(INCLUDE) $(LIBS)
-	
-
+.PHONY: clean
 clean:
-	rm -f glad.o main.o $(TARGET)
-
-.PHONY: all clean
+	rm -f sandy
