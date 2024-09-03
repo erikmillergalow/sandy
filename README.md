@@ -7,6 +7,8 @@
 
 <h4 align="center">Yet another falling sand simulator, developed using <a href="https://github.com/floooh/sokol">sokol</a> and <a href="https://github.com/Immediate-Mode-UI/Nuklear">nuklear.</a></h4>
 
+<h4 align="center"><a href="https://ad98a768.sandy-demo.pages.dev/sandy">Live demo</a></h2>
+
 ### Compile and run
 ```shell
 // needed for cross-platform shader compilation
